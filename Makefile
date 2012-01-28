@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-g -std=c99
-LDFLAGS=-lSDL
+LDFLAGS=-lSDL -ldl -lm -lpthread
 
 SOURCES=v4l2sdl.c
 OBJECTS=$(SOURCES:.c=.o)
