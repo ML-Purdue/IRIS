@@ -81,41 +81,41 @@ void yuv2rgb(int y, int u, int v, char *r, char *g, char *b)
 
 void YUYV2RGB(void *Dest, const void *src, int width, int height)
 {
-    unsigned char *p = (unsigned char *)src, *dest = (unsigned char *)Dest;
-    for(int y = 0; y < height; y++) {
-        unsigned char *line = p + y * width *2;
-        for(int x = 0; x < width; x+=2) {
-            int Y0 = line[x*2];
-            int U = line[x*2+1];
-            int Y1 = line[x*2+2];
-            int V = line[x*2+3];
+ unsigned char *p = (unsigned char *)src, *dest = (unsigned char *)Dest;
+ for(int y = 0; y < height; y++) {
+  unsigned char *line = p + y * width *2;
+  for(int x = 0; x < width; x+=2) {
+   int Y0 = line[x*2];
+   int U = line[x*2+1];
+   int Y1 = line[x*2+2];
+   int V = line[x*2+3];
 
-            char r0, g0, b0, r1, g1, b1;
-            yuv2rgb(Y0, U, V, &r0, &g0, &b0);
-            yuv2rgb(Y1, U, V, &r1, &g1, &b1);
-            dest[(y*width+x)*4] = r0;
-            dest[(y*width+x)*4 + 1] = g0;
-            dest[(y*width+x)*4 + 2] = b0;
-            dest[(y*width+x)*4 + 3] = 255;
-            dest[(y*width+x)*4 + 4] = r1;
-            dest[(y*width+x)*4 + 5] = g1;
-            dest[(y*width+x)*4 + 6] = b1;
-            dest[(y*width+x)*4 + 7] = 255;
-        }
-    }
+   char r0, g0, b0, r1, g1, b1;
+   yuv2rgb(Y0, U, V, &r0, &g0, &b0);
+   yuv2rgb(Y1, U, V, &r1, &g1, &b1);
+   int i = (y*width+x)*4;
+   dest[i+0] = b0;
+   dest[i+1] = g0;
+   dest[i+2] = r0;
+   dest[i+3] = 255;
+   dest[i+4] = b1;
+   dest[i+5] = g1;
+   dest[i+6] = r1;
+   dest[i+7] = 255;
+  }
+ }
 }
 
 static void process_image (const void* p) {
-    /*unsigned char* d = (unsigned char*)p;
-      for (int i = 0; i < 15; i++) {
-      printf("%02x ", d[i]);
-      }
-      printf("\n");
-      fflush(stdout);
-      SDL_Flip(screen);
-      */
-    YUYV2RGB(screen->pixels, p, 640, 480);
-    SDL_Flip(screen);
+ unsigned char* d = (unsigned char*)p;
+ /*for (int i = 0; i < 640*480*2; i++) {
+  printf("%d ", *((unsigned char*)p+i));
+ }
+ printf("\n");
+ fflush(stdout);*/
+
+ YUYV2RGB(screen->pixels, p, 640, 480);
+ SDL_Flip(screen);
 }
 
 static int read_frame (void) {
