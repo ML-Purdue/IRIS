@@ -2,6 +2,8 @@
 #include <SDL/SDL_ttf.h>
 #include <stdio.h>
 
+#include "SDL_test.h"
+
 #define WIDTH 1920
 #define HEIGHT 1080
 #define BPP 4
@@ -126,7 +128,6 @@ int load_files() {
     }
     return 0;
 }
-
 void apply_surface (int x, int y, SDL_Surface * source, SDL_Surface * dest) {
     SDL_Rect offset;
     offset.x = x;
@@ -152,6 +153,33 @@ void clean_up () {
     SDL_Quit();
 }
 
+int poll_keypress (){
+		SDL_Event event;
+		while(SDL_PollEvent(&event))
+		{
+				switch (event.type)
+				{
+						case SDL_QUIT:
+								return 1;
+								break;
+						case SDL_KEYDOWN:
+								return 1;
+								break;
+				}
+		}
+
+}
+
+void delay(int i){
+	for(int j=0;j<i*5; j++){
+		SDL_Delay(200);
+		if(poll_keypress()==1){
+			clean_up();
+			exit(0);
+		}
+	}
+}
+
 int main(int argc, char* argv[])
 {
     SDL_Event event;
@@ -172,8 +200,6 @@ int main(int argc, char* argv[])
 
     Uint32 background_color = SDL_MapRGB( screen->format, 0x33, 0x99, 0xFF );
     SDL_FillRect(screen, NULL, background_color);
-
-
     message = TTF_RenderText_Solid ( font, "Welcome to Iris World", textColor);
 
     if ( message == NULL ) {
@@ -185,7 +211,7 @@ int main(int argc, char* argv[])
 
 
     SDL_Flip(screen);
-    SDL_Delay(5000);
+    delay(5);
     message=NULL;
     SDL_FillRect(screen, NULL, background_color);
     ms1= TTF_RenderText_Solid(font, "Please look at the left top side of the screen", textColor);
