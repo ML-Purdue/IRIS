@@ -106,14 +106,14 @@ void YUYV2RGB(void *Dest, const void *src, int width, int height)
 }
 
 static void process_image (const void* p) {
- /*unsigned char* d = (unsigned char*)p;
- for (int i = 0; i < 15; i++) {
-  printf("%02x ", d[i]);
+ unsigned char* d = (unsigned char*)p;
+ for (int i = 0; i < 640*480*2; i++) {
+  printf("%d ", *((unsigned char*)p+i));
  }
  printf("\n");
  fflush(stdout);
  SDL_Flip(screen);
- */
+ 
  YUYV2RGB(screen->pixels, p, 640, 480);
  SDL_Flip(screen);
 }
@@ -184,7 +184,7 @@ static int read_frame (void) {
 
 static void mainloop(void) {
  unsigned int count;
- count = 200;
+ count = 1;
 
  while (count-- > 0) {
   for (;;) {
