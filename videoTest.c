@@ -16,6 +16,8 @@
 #include <linux/videodev2.h>
 #include <SDL/SDL.h>
 
+#include "videoTest.h"
+
 #define CLEAR(x) memset (&(x), 0, sizeof (x))
 
 typedef enum {
@@ -430,6 +432,28 @@ static void init_userp (unsigned int buffer_size) {
 }
 
 static void init_device (void) {
+    //open device
+    struct stat st;
+
+    if (-1 == stat (dev_name, &st)) {
+        fprintf (stderr, "Cannot identify '%s': %d, %s\n", dev_name, errno, strerror (errno));
+        exit (EXIT_FAILURE);
+    }
+
+    //Is it the correct file type (character device)
+    if (!S_ISCHR(st.st_mode)) {
+        fprintf (stderr, "%s is no device\n", dev_name);
+        exit (EXIT_FAILURE);
+    }
+
+    fd = open (dev_name, O_RDWR /* required */ | O_NONBLOCK, 0);
+
+    if (-1 == fd) {
+        fprintf (stderr, "Cannot open '%s': %d, %s\n", dev_name, errno, strerror (errno));
+        exit (EXIT_FAILURE);
+    }
+
+    //init device
     struct v4l2_capability cap;
     struct v4l2_cropcap cropcap;
     struct v4l2_crop crop;
@@ -522,32 +546,12 @@ static void init_device (void) {
     }
 }
 
+
 static void close_device (void) {
     if (-1 == close (fd))
         errno_exit ("close");
 
     fd = -1;
-}
-
-static void open_device (void) {
-    struct stat st;
-
-    if (-1 == stat (dev_name, &st)) {
-        fprintf (stderr, "Cannot identify '%s': %d, %s\n", dev_name, errno, strerror (errno));
-        exit (EXIT_FAILURE);
-    }
-
-    if (!S_ISCHR (st.st_mode)) {
-        fprintf (stderr, "%s is no device\n", dev_name);
-        exit (EXIT_FAILURE);
-    }
-
-    fd = open (dev_name, O_RDWR /* required */ | O_NONBLOCK, 0);
-
-    if (-1 == fd) {
-        fprintf (stderr, "Cannot open '%s': %d, %s\n", dev_name, errno, strerror (errno));
-        exit (EXIT_FAILURE);
-    }
 }
 
 static void usage (FILE* fp, int argc, char** argv) {
@@ -608,7 +612,6 @@ int main (int argc, char**  argv) {
 
     }
 
-    open_device ();
     init_device ();
     start_capturing ();
     mainloop ();
