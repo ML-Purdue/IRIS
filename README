@@ -1,3 +1,4 @@
-Jin made this change!
-Not so Initial Version!
-new change
+This is the Purdue SigART's IRIS project.
+
+The project aims to use a webcam to track a user's eyes in order to determine what the user is looking at.  Some possible uses for this technology are human-computer interaction by controlling the mouse, or possibly generating a heatmap of where the user looks throughout the day.
+
