@@ -1,10 +1,10 @@
 CC=gcc
-CFLAGS=-g
+CFLAGS=-g -std=c99
 LDFLAGS=-lSDL
 
-SOURCES=webcam.c
+SOURCES=v4l2sdl.c
 OBJECTS=$(SOURCES:.c=.o)
-EXECUTABLES=webcam
+EXECUTABLES=v4l2sdl
 
 .PHONY: all clean
 
@@ -14,5 +14,5 @@ $(EXECUTABLES): $(OBJECTS)
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 clean:
-	rm -rf webcam *.o
+	rm -rf $(EXECUTABLES) $(OBJECTS)
 

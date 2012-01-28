@@ -379,7 +379,7 @@ static void init_userp (unsigned int buffer_size) {
  struct v4l2_requestbuffers req;
  unsigned int page_size;
 
- page_size = getpagesize();
+ page_size = sysconf(_SC_PAGESIZE);
  buffer_size = (buffer_size + page_size - 1) & ~(page_size - 1);
 
  CLEAR (req);
