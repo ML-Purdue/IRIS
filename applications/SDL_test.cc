@@ -9,6 +9,10 @@
 
 SDL_Surface *screen = NULL;
 SDL_Surface *message = NULL;
+SDL_Surface *ms1 = NULL;
+SDL_Surface *ms2 = NULL;
+SDL_Surface *ms3 = NULL;
+SDL_Surface *ms4 = NULL;
 
 SDL_Color textColor = {255, 255, 255};
 
@@ -139,7 +143,8 @@ void apply_centered (SDL_Surface * source, SDL_Surface * dest) {
 }
 
 void clean_up () {
-    SDL_FreeSurface( message );
+    SDL_FreeSurface( message);
+    SDL_FreeSurface(ms1);
 
     TTF_CloseFont( font );
 
@@ -169,7 +174,7 @@ int main(int argc, char* argv[])
     SDL_FillRect(screen, NULL, background_color);
 
 
-    message = TTF_RenderText_Solid ( font, "Test text", textColor);
+    message = TTF_RenderText_Solid ( font, "Welcome to Iris World", textColor);
 
     if ( message == NULL ) {
         fprintf( stderr, "Could not render message.\n");
@@ -180,8 +185,21 @@ int main(int argc, char* argv[])
 
 
     SDL_Flip(screen);
+    SDL_Delay(5000);
+    message=NULL;
+    SDL_FillRect(screen, NULL, background_color);
+    ms1= TTF_RenderText_Solid(font, "Please look at the left top side of the screen", textColor);
 
+    if(ms1 ==NULL){
+      fprintf(stderr, "Could not render the message.\n");
+      return 1;
+    }
 
+    SDL_Rect square = {0, 0, 150, 100};
+    Uint32 squareColor = SDL_MapRGB( screen->format, 0xff, 0xff, 0xff);
+    SDL_FillRect(screen, &square , squareColor);
+ 
+   
     // Wait for a keypress or an exit button push
     while(!keypress)
     {
