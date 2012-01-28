@@ -2,9 +2,9 @@ CC=gcc
 CFLAGS=-g -std=c99
 LDFLAGS=-lSDL -ldl -lm -lpthread
 
-SOURCES=v4l2sdl.c
+SOURCES=videoTest.c
 OBJECTS=$(SOURCES:.c=.o)
-EXECUTABLES=v4l2sdl
+EXECUTABLES=videoTest
 
 .PHONY: all clean
 
