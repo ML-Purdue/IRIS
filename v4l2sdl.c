@@ -49,31 +49,60 @@ static int xioctl (int fd, int request, void* arg) {
  return r;
 }
 
-void YUVY2RGB(void *Dest, const void *src, int width, int height)
+// SDL format: 32 bits: 8 red, 8 green, 8 blue, 8 alpha
+// 0xrrggbbaa
+
+//                p1    p2
+// YUYV format: [Y1,U][Y2,V]
+// YCbCr = YUV
+
+void yuv2rgb(int y, int u, int v, char *r, char *g, char *b)
 {
-	unsigned char *p = (unsigned char *)src,
-					*dest = (unsigned char *)Dest;
-	for(int y = 0; y < height; y++) {
-		unsigned char *line = p + y * width *2;
-		for(int x = 0; x < width ; x+=4) {
-			int Y0 = line[x], U = line[x+1],
-				Y1 = line[x+2], V = line[x+3];
-			int B0 = 1.164 * (Y0-16) + 2.018 * (U-128),
-				G0 = 1.164 * (Y0-16) - 0.813 * (V-128) - 0.391 * (U-128),
-				R0 = 1.164 * (Y0-16) + 1.596 * (V-128);
-			int B1 = 1.164 * (Y1-16) + 2.018 * (U-128),
-				G1 = 1.164 * (Y1-16) - 0.813 * (V-128) - 0.391 * (U-128),
-				R1 = 1.164 * (Y1-16) + 1.596 * (V-128);
-			dest[(y*width+x)*4] = R0;
-			dest[(y*width+x)*4 + 1] = G0;
-			dest[(y*width+x)*4 + 2] = B0;
-			dest[(y*width+x)*4 + 3] = 255;
-			dest[(y*width+x)*4 + 4] = R1;
-			dest[(y*width+x)*4 + 5] = G1;
-			dest[(y*width+x)*4 + 6] = B1;
-			dest[(y*width+x)*4 + 7] = 255;
-		}
-	}
+ int r1, g1, b1;
+ int c = y-16, d = u - 128, e = v - 128;       
+     
+ r1 = (298 * c           + 409 * e + 128) >> 8;
+ g1 = (298 * c - 100 * d - 208 * e + 128) >> 8;
+ b1 = (298 * c + 516 * d           + 128) >> 8;
+     
+ // Even with proper conversion, some values still need clipping.
+ 
+ if (r1 > 255) r1 = 255;
+ if (g1 > 255) g1 = 255;
+ if (b1 > 255) b1 = 255;
+ if (r1 < 0) r1 = 0;
+ if (g1 < 0) g1 = 0;
+ if (b1 < 0) b1 = 0;
+       			    
+ *r = r1 ;
+ *g = g1 ;
+ *b = b1 ;
+}
+
+void YUYV2RGB(void *Dest, const void *src, int width, int height)
+{
+ unsigned char *p = (unsigned char *)src, *dest = (unsigned char *)Dest;
+ for(int y = 0; y < height; y++) {
+  unsigned char *line = p + y * width *2;
+  for(int x = 0; x < width; x+=2) {
+   int Y0 = line[x*2];
+   int U = line[x*2+1];
+   int Y1 = line[x*2+2];
+   int V = line[x*2+3];
+
+   char r0, g0, b0, r1, g1, b1;
+   yuv2rgb(Y0, U, V, &r0, &g0, &b0);
+   yuv2rgb(Y1, U, V, &r1, &g1, &b1);
+   dest[(y*width+x)*4] = r0;
+   dest[(y*width+x)*4 + 1] = g0;
+   dest[(y*width+x)*4 + 2] = b0;
+   dest[(y*width+x)*4 + 3] = 255;
+   dest[(y*width+x)*4 + 4] = r1;
+   dest[(y*width+x)*4 + 5] = g1;
+   dest[(y*width+x)*4 + 6] = b1;
+   dest[(y*width+x)*4 + 7] = 255;
+  }
+ }
 }
 
 static void process_image (const void* p) {
@@ -85,7 +114,7 @@ static void process_image (const void* p) {
  fflush(stdout);
  SDL_Flip(screen);
  */
- YUVY2RGB(screen->pixels, p, 640, 480);
+ YUYV2RGB(screen->pixels, p, 640, 480);
  SDL_Flip(screen);
 }
 
