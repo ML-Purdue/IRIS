@@ -184,12 +184,11 @@ static int read_frame (void) {
 
 static void mainloop(void) {
     unsigned int count;
-    count = 200;
 
     int keypress = 0;
     SDL_Event event;
 
-    while (!keypress && count-- > 0) {
+    while (!keypress) {
         for (;;) {
             fd_set fds;
             struct timeval tv;
