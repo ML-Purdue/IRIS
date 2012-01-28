@@ -1,0 +1,3 @@
+.gitignore
+*.o
+v4l2sdl
