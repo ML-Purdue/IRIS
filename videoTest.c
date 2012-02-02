@@ -556,7 +556,7 @@ static void usage (FILE* fp, int argc, char** argv) {
     fprintf (fp,
             "Usage: %s [options]\n\n"
             "Options:\n"
-            "-d | --device name   Video device name [/dev/video]\n"
+            "-d | --device name   Video device name [/dev/video0]\n"
             "-h | --help   Print this message\n"
             "-m | --mmap   Use memory mapped buffers\n"
             "-r | --read   Use read() calls\n"
