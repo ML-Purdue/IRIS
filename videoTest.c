@@ -321,6 +321,12 @@ static void uninit_device (void) {
     }
 
     free(buffers);
+
+    //close device
+    if (-1 == close (fd))
+        errno_exit ("close");
+
+    fd = -1;
 }
 
 static void init_read(unsigned int buffer_size) {
@@ -546,14 +552,6 @@ static void init_device (void) {
     }
 }
 
-
-static void close_device (void) {
-    if (-1 == close (fd))
-        errno_exit ("close");
-
-    fd = -1;
-}
-
 static void usage (FILE* fp, int argc, char** argv) {
     fprintf (fp,
             "Usage: %s [options]\n\n"
@@ -617,8 +615,5 @@ int main (int argc, char**  argv) {
     mainloop ();
     stop_capturing ();
     uninit_device ();
-    close_device ();
     exit (EXIT_SUCCESS);
-
-    return 0;
 }

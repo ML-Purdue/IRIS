@@ -21,7 +21,6 @@ static void init_userp (unsigned int buffer_size);
 static void init_device (void);
 
 //Uninit functions
-static void close_device (void);
 static void uninit_device (void);
 static void stop_capturing (void);
 
