@@ -31,6 +31,12 @@ struct buffer {
     size_t length;
 };
 
+typedef struct frame {
+    unsigned char* array;
+	int width;
+	int height;
+} frame;
+
 static char* dev_name = NULL;
 static io_method io = IO_METHOD_MMAP;
 static int fd = -1;
@@ -110,18 +116,11 @@ void array_YUYV2RGB(void *Dest, const void *src, int width, int height) {
 
 static void process_image (const void* p) {
  unsigned char* d = (unsigned char*)p;
- /*for (int i = 0; i < 640*480*2; i++) {
-  printf("%d ", *((unsigned char*)p+i));
- }
- printf("\n");
- fflush(stdout);*/
- printf("%02x %02x %02x %02x %02x\n",d[0],d[1],d[2],d[3],d[4]);
-
  array_YUYV2RGB(screen->pixels, p, 640, 480);
  SDL_Flip(screen);
 }
 
-static int read_frame (void) {
+static unsigned char* read_frame (void) {
     struct v4l2_buffer buf;
     unsigned int i;
 
@@ -129,7 +128,7 @@ static int read_frame (void) {
         case IO_METHOD_READ:
             if (-1 == read (fd, buffers[0].start, buffers[0].length)) {
                 switch (errno) {
-                    case EAGAIN: return 0;
+                    case EAGAIN: return NULL;
                     case EIO: /* Could ignore EIO, see spec. fall through */
                     default: errno_exit ("read");
                 }
@@ -144,7 +143,7 @@ static int read_frame (void) {
 
             if (-1 == xioctl (fd, VIDIOC_DQBUF, &buf)) {
                 switch (errno) {
-                    case EAGAIN: return 0;
+                    case EAGAIN: return NULL;
                     case EIO: /* Could ignore EIO, see spec. fall through */
                     default: errno_exit ("VIDIOC_DQBUF");
                 }
@@ -164,7 +163,7 @@ static int read_frame (void) {
 
             if (-1 == xioctl (fd, VIDIOC_DQBUF, &buf)) {
                 switch (errno) {
-                    case EAGAIN: return 0;
+                    case EAGAIN: return NULL;
                     case EIO: /* Could ignore EIO, see spec. fall through */
                     default: errno_exit ("VIDIOC_DQBUF");
                 }
@@ -182,55 +181,33 @@ static int read_frame (void) {
             break;
     }
 
-    return 2;
+    return buffers[buf.index].start;
+}
+
+void getArray(frame* f) {
+    if (f == NULL) return;
+    f->width = 640;
+    f->height = 480;
+    f->array = read_frame();
 }
 
 static void mainloop(void) {
-    unsigned int count;
-
     int keypress = 0;
     SDL_Event event;
+	frame *f = (frame *)malloc(sizeof(frame));
 
     while (!keypress) {
-        for (;;) {
-            fd_set fds;
-            struct timeval tv;
-            int r;
-
-            FD_ZERO (&fds);
-            FD_SET (fd, &fds);
-
-            /* Timeout. */
-            tv.tv_sec = 2;
-            tv.tv_usec = 0;
-
-            r = select (fd + 1, &fds, NULL, NULL, &tv);
-
-            if (-1 == r) {
-                if (EINTR == errno) continue;
-                errno_exit ("select");
-            }
-
-            if (0 == r) {
-                fprintf (stderr, "select timeout\n");
-                exit (EXIT_FAILURE);
-            }
-
-            if (read_frame ()) break;
-            /* EAGAIN - continue select loop. */
-        }
+        getArray(f);
 
         // Read all keypress events
-        while(SDL_PollEvent(&event))
-        {
-            switch (event.type)
-            {
-                case SDL_QUIT:
-                    keypress = 1;
-                    break;
-                case SDL_KEYDOWN:
-                    keypress = 1;
-                    break;
+        while(SDL_PollEvent(&event)) {
+            switch (event.type) {
+			case SDL_QUIT:
+				keypress = 1;
+			break;
+            case SDL_KEYDOWN:
+                keypress = 1;
+            break;
             }
         }
     }
@@ -590,23 +567,25 @@ int main (int argc, char**  argv) {
         if (-1 == c) break;
 
         switch (c) {
-            case 0: break; /* getopt_long() flag */
-            case 'd': dev_name = optarg; break;
-            case 'h':
-                      usage (stdout, argc, argv);
-                      exit (EXIT_SUCCESS);
-            case 'm':
-                      io = IO_METHOD_MMAP;
-                      break;
-            case 'r':
-                      io = IO_METHOD_READ;
-                      break;
-            case 'u':
-                      io = IO_METHOD_USERPTR;
-                      break;
-            default:
-                      usage (stderr, argc, argv);
-                      exit (EXIT_FAILURE);
+        case 0: break; /* getopt_long() flag */
+        case 'd':
+		    dev_name = optarg;
+	    break;
+        case 'h':
+                  usage (stdout, argc, argv);
+                  exit (EXIT_SUCCESS);
+        case 'm':
+                  io = IO_METHOD_MMAP;
+                  break;
+        case 'r':
+                  io = IO_METHOD_READ;
+                  break;
+        case 'u':
+                  io = IO_METHOD_USERPTR;
+                  break;
+        default:
+                  usage (stderr, argc, argv);
+                  exit (EXIT_FAILURE);
         }
 
     }
