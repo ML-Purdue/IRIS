@@ -58,8 +58,7 @@ static int xioctl (int fd, int request, void* arg) {
 // YUYV format: [Y1,U][Y2,V]
 // YCbCr = YUV
 
-void yuv2rgb(int y, int u, int v, char *r, char *g, char *b)
-{
+void yuv2rgb(int y, int u, int v, char *r, char *g, char *b) {
     int r1, g1, b1;
     int c = y-16, d = u - 128, e = v - 128;
 
@@ -81,8 +80,7 @@ void yuv2rgb(int y, int u, int v, char *r, char *g, char *b)
     *b = b1 ;
 }
 
-void YUYV2RGB(void *Dest, const void *src, int width, int height)
-{
+void YUYV2RGB(void *Dest, const void *src, int width, int height) {
  unsigned char *p = (unsigned char *)src, *dest = (unsigned char *)Dest;
  for(int y = 0; y < height; y++) {
   unsigned char *line = p + y * width *2;
@@ -115,6 +113,7 @@ static void process_image (const void* p) {
  }
  printf("\n");
  fflush(stdout);*/
+ printf("%02x %02x %02x %02x %02x\n",d[0],d[1],d[2],d[3],d[4]);
 
  YUYV2RGB(screen->pixels, p, 640, 480);
  SDL_Flip(screen);
