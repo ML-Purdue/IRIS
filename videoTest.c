@@ -54,11 +54,12 @@ static int xioctl (int fd, int request, void* arg) {
 // SDL format: 32 bits: 8 red, 8 green, 8 blue, 8 alpha
 // 0xrrggbbaa
 
-//                p1    p2
+//                p1    p2      pixel 1 and 2
 // YUYV format: [Y1,U][Y2,V]
-// YCbCr = YUV
+// YCbCr is the same as YUV
 
-void yuv2rgb(int y, int u, int v, char *r, char *g, char *b) {
+// converts a pixel from YUV color to RGB color
+void pixel_YUV2RGB(int y, int u, int v, char *r, char *g, char *b) {
     int r1, g1, b1;
     int c = y-16, d = u - 128, e = v - 128;
 
@@ -80,7 +81,8 @@ void yuv2rgb(int y, int u, int v, char *r, char *g, char *b) {
     *b = b1 ;
 }
 
-void YUYV2RGB(void *Dest, const void *src, int width, int height) {
+// converts an array of pixels from YUYV color to RGB color
+void array_YUYV2RGB(void *Dest, const void *src, int width, int height) {
  unsigned char *p = (unsigned char *)src, *dest = (unsigned char *)Dest;
  for(int y = 0; y < height; y++) {
   unsigned char *line = p + y * width *2;
@@ -91,8 +93,8 @@ void YUYV2RGB(void *Dest, const void *src, int width, int height) {
    int V = line[x*2+3];
 
    char r0, g0, b0, r1, g1, b1;
-   yuv2rgb(Y0, U, V, &r0, &g0, &b0);
-   yuv2rgb(Y1, U, V, &r1, &g1, &b1);
+   pixel_YUV2RGB(Y0, U, V, &r0, &g0, &b0);
+   pixel_YUV2RGB(Y1, U, V, &r1, &g1, &b1);
    int i = (y*width+x)*4;
    dest[i+0] = b0;
    dest[i+1] = g0;
@@ -115,7 +117,7 @@ static void process_image (const void* p) {
  fflush(stdout);*/
  printf("%02x %02x %02x %02x %02x\n",d[0],d[1],d[2],d[3],d[4]);
 
- YUYV2RGB(screen->pixels, p, 640, 480);
+ array_YUYV2RGB(screen->pixels, p, 640, 480);
  SDL_Flip(screen);
 }
 
