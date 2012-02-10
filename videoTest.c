@@ -65,7 +65,7 @@ static int xioctl (int fd, int request, void* arg) {
 
 // converts a pixel from YUV color to RGB color
 void pixel_YUV2RGB(int y, int u, int v, char *r, char *g, char *b) {
-    int c = y-16;
+    int c = y - 16;
 	int d = u - 128;
 	int e = v - 128;
 
@@ -503,8 +503,7 @@ static void usage (FILE* fp, int argc, char** argv) {
             "-h | --help   Print this message\n"
             "-m | --mmap   Use memory mapped buffers\n"
             "-r | --read   Use read() calls\n"
-            "-u | --userp  Use application allocated buffers\n"
-            "",
+            "-u | --userp  Use application allocated buffers\n",
             argv[0]);
 }
 
@@ -517,7 +516,7 @@ static const struct option long_options [] = {
     {0, 0, 0, 0}
 };
 
-int main (int argc, char**  argv) {
+int main (int argc, char** argv) {
     SDL_Init(SDL_INIT_EVERYTHING);
     screen = SDL_SetVideoMode(640, 480, 32, SDL_SWSURFACE);
 
@@ -537,6 +536,7 @@ int main (int argc, char**  argv) {
         case 'h':
             usage (stdout, argc, argv);
             exit (EXIT_SUCCESS);
+            break;
         case 'm':
             io = IO_METHOD_MMAP;
             break;
