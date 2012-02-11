@@ -3,8 +3,6 @@
 
 #include "videoInterface.h"
 
-static void usage (FILE* fp, int argc, char** argv);
-
-static void mainloop(void);
+static void print_usage(FILE* fp, int argc, char** argv);
 
 #endif /* __VIDEO_TEST_H */

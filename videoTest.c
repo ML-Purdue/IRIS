@@ -1,27 +1,14 @@
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <assert.h>
 #include <getopt.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
-#include <malloc.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <sys/mman.h>
-#include <sys/ioctl.h>
-#include <asm/types.h>
+
+//For SDL screen display
 #include <SDL/SDL.h>
 
 #include "videoTest.h"
 
-
 static const char short_options [] = "d:hmru";
-SDL_Surface* screen = NULL;
 
-static void usage (FILE* fp, int argc, char** argv) {
+static void print_usage (FILE* fp, int argc, char** argv) {
     fprintf (fp,
             "Usage: %s [options]\n\n"
             "Options:\n"
@@ -45,7 +32,7 @@ static const struct option long_options [] = {
 int main (int argc, char** argv) {
     //Init screen
     SDL_Init(SDL_INIT_EVERYTHING);
-    screen = SDL_SetVideoMode(640, 480, 32, SDL_SWSURFACE);
+    SDL_Surface *screen = SDL_SetVideoMode(640, 480, 32, SDL_SWSURFACE);
     const char *dev_name = "/dev/video0";
     io_method io = IO_METHOD_MMAP;
 
@@ -62,8 +49,8 @@ int main (int argc, char** argv) {
 		    dev_name = optarg;
 	        break;
         case 'h':
-            usage (stdout, argc, argv);
-            exit (EXIT_SUCCESS);
+            print_usage (stdout, argc, argv);
+            return 0;
             break;
         case 'm':
             io = IO_METHOD_MMAP;
@@ -75,8 +62,8 @@ int main (int argc, char** argv) {
             io = IO_METHOD_USERPTR;
             break;
         default:
-            usage (stderr, argc, argv);
-            exit (EXIT_FAILURE);
+            print_usage (stderr, argc, argv);
+            return -1;
 	        break;
         }
     }
@@ -95,5 +82,5 @@ int main (int argc, char** argv) {
     //Stop grabbing frames
     stopVideo();
 
-    exit (EXIT_SUCCESS);
+    return 0;
 }
