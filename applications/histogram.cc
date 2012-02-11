@@ -113,11 +113,44 @@ void clean_up () {
     SDL_Quit();
 }
 
-int draw_vhist (SDL_Surface *src, SDL_Surface *dest) {
+// Generates an array containing the normalized dark-density for each row
+int *rowhist (SDL_Surface *src) {
     int x, y, ytimesw;
-    int rowsum [src->h];
+    int *rowsum = (int *) malloc(sizeof(int) * src->h);
     int rowmax = -1;
-    int colsum [src->w];
+
+    Uint32 *pixmem32 = (Uint32*) src->pixels;
+    Uint32 color;
+
+    Uint8 r, g, b;
+
+    for (y = 0; y < src->h; y++) {
+        rowsum[y] = 0;
+        for (x = 0; x < src->w; x++) {
+            color = *pixmem32;
+            SDL_GetRGB (color, src->format, &r, &g, &b);
+            if (r < THRESH && g < THRESH && b < THRESH) {
+                rowsum[y]++;
+            }
+            pixmem32++;
+        }
+        if (rowsum[y] > rowmax) {
+            rowmax = rowsum[y];
+        }
+    }
+
+    for (int y = 0; y < src->h; y++) {
+        rowsum[y] *= HIST_W;
+        rowsum[y] /= rowmax;
+    }
+
+    return rowsum;
+}
+
+// Generates an array containing the normalized dark-density for each column
+int *colhist (SDL_Surface *src) {
+    int x, y, ytimesw;
+    int *colsum = (int *) malloc(sizeof(int) * src->w);
     int colmax = -1;
 
     Uint32 *pixmem32 = (Uint32*) src->pixels;
@@ -130,18 +163,13 @@ int draw_vhist (SDL_Surface *src, SDL_Surface *dest) {
     }
 
     for (y = 0; y < src->h; y++) {
-        rowsum[y] = 0;
         for (x = 0; x < src->w; x++) {
             color = *pixmem32;
             SDL_GetRGB (color, src->format, &r, &g, &b);
             if (r < THRESH && g < THRESH && b < THRESH) {
-                rowsum[y]++;
                 colsum[x]++;
             }
             pixmem32++;
-        }
-        if (rowsum[y] > rowmax) {
-            rowmax = rowsum[y];
         }
     }
 
@@ -151,6 +179,53 @@ int draw_vhist (SDL_Surface *src, SDL_Surface *dest) {
         }
     }
 
+    for (x = 0; x < src->w; x++) {
+        colsum[x] *= HIST_W;
+        colsum[x] /= colmax;
+    }
+
+    return colsum;
+
+}
+
+// finds the local maximums of an array, returns them in maxes
+int * localMaxes (int *data, int len, int WINDOW){
+
+    // Find local maximums for rows
+    // Generate our initial running sum
+    int max = 0;
+    int maxloc = 0;
+    int winstart;
+    int winend;
+    int * maxes = (int *) malloc(sizeof(int) * len);
+    memset(maxes, 0, sizeof(int) * len);
+
+    for (int i = 0; i < len; i++) {
+        winstart = i - WINDOW < 0   ? 0   : i-WINDOW;
+        winend   = i + WINDOW > len ? len : i+WINDOW;
+        max = 0;
+        maxloc = winstart;
+        for (int j = winstart; j < winend; j++) {
+            if (data[j] > max) {
+                max = data[j];
+                maxloc = j;
+            }
+        }
+
+        if (maxloc == i) {
+            maxes[i] = 1;
+        }
+    }
+    return maxes;
+}
+
+
+int draw_hist (SDL_Surface *src, SDL_Surface *dest) {
+    int x, y, ytimesw;
+    int *rowsum, *colsum;
+    rowsum = rowhist(src);
+    colsum = colhist(src);
+
 
     if(SDL_MUSTLOCK(dest))
     {
@@ -159,41 +234,42 @@ int draw_vhist (SDL_Surface *src, SDL_Surface *dest) {
 
     // Draw histogram for rows
     for (int y = 0; y < src->h; y++) {
-        rowsum[y] *= HIST_W;
-        rowsum[y] /= rowmax;
         ytimesw = y * dest->pitch / BPP;
         for (int x = 0; x < rowsum[y]; x++) {
             setpixel(dest, x, ytimesw, 0, 255, 0);
         }
     }
 
-    // Find local maximums for rows
-    // Generate our initial running sum
-    const int WINDOW = 10;
-    int max = 0;
-    int maxloc = 0;
-    int winstart;
-    int winend;
-
-    for (int y = 0; y < src->h; y++) {
-        winstart = y - WINDOW < 0      ? 0      : y-WINDOW;
-        winend   = y + WINDOW > src->h ? src->h : y+WINDOW;
-        max = 0;
-        maxloc = winstart;
-        for (int i = winstart; i < winend; i++) {
-            if (rowsum[i] > max) {
-                max = rowsum[i];
-                maxloc = i;
-            }
-        }
-
-        if (maxloc == y) {
+    // Draw histogram for cols
+    // TODO: optimize
+    for (x = 0; x < src->w; x++) {
+        for (int i = colsum[x]; i > 0; i--) {
+            y = HIST_W + src->h - i;
             ytimesw = y * dest->pitch / BPP;
-            for (int x = HIST_W; x < HIST_W + src->w; x++) {
-                setpixel(dest, x, ytimesw, 255, 0, 0);
+            setpixel(dest, x + HIST_W, ytimesw, 0, 255, 0);
+        }
+    }
+
+    const int WINDOW = 10;
+    int * rowMaxes = localMaxes(rowsum, src->h, 10);
+    int * colMaxes = localMaxes(colsum, src->w, 30);
+    for (y = 0; y < src->h; y++) {
+        ytimesw = y * dest->pitch / BPP;
+        for (x = 0; x < src->w; x++) {
+            if (rowMaxes[y]) {
+                setpixel(dest, x + HIST_W, ytimesw, 255, 0, 0);
+            }
+            if (colMaxes[x]) {
+                setpixel(dest, x + HIST_W, ytimesw, 0, 0, 255);
             }
         }
     }
+
+
+
+    if(SDL_MUSTLOCK(dest)) SDL_UnlockSurface(dest);
+
+    /*
 
     for (int x = 0; x < src->w; x++) {
         winstart = x - WINDOW < 0      ? 0      : x-WINDOW;
@@ -202,7 +278,7 @@ int draw_vhist (SDL_Surface *src, SDL_Surface *dest) {
         maxloc = winstart;
         for (int i = winstart; i < winend; i++) {
             if (colsum[i] > max) {
-                max = sum[i];
+                max = colsum[i];
                 maxloc = i;
             }
         }
@@ -214,23 +290,11 @@ int draw_vhist (SDL_Surface *src, SDL_Surface *dest) {
             }
         }
     }
+    */
 
 
 
 
-    // Draw histogram for cols
-    // TODO: optimize
-    for (x = 0; x < src->w; x++) {
-        colsum[x] *= HIST_W;
-        colsum[x] /= colmax;
-        for (int i = colsum[x]; i > 0; i--) {
-            y = HIST_W + src->h - i;
-            ytimesw = y * dest->pitch / BPP;
-            setpixel(dest, x + HIST_W, ytimesw, 0, 255, 0);
-        }
-    }
-
-    if(SDL_MUSTLOCK(dest)) SDL_UnlockSurface(dest);
 
     return 0;
 }
@@ -264,7 +328,7 @@ main (int argc, char * argv[])
     apply_surface(HIST_W, 0, image, screen);
 
     time_t start = time(&start);
-    draw_vhist(image, screen);
+    draw_hist(image, screen);
     time_t end = time(&end);
 
     double diff = difftime(end, start);
