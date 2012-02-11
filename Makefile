@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-g -std=c99
 LDFLAGS=-lSDL -ldl -lm -lpthread
 
-SOURCES=videoTest.c
+SOURCES=videoInterface.c videoTest.c
 OBJECTS=$(SOURCES:.c=.o)
 EXECUTABLES=videoTest
 

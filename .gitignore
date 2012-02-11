@@ -1,3 +1,4 @@
 .gitignore
 *.o
 videoTest
+*.swp
