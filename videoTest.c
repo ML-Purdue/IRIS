@@ -56,138 +56,6 @@ static int xioctl (int fd, int request, void* arg) {
     return r;
 }
 
-// SDL format: 32 bits: 8 red, 8 green, 8 blue, 8 alpha
-// 0xrrggbbaa
-
-//                p1    p2      pixel 1 and 2
-// YUYV format: [Y1,U][Y2,V]
-// YCbCr is the same as YUV
-
-// converts a pixel from YUV color to RGB color
-void pixel_YUV2RGB(int y, int u, int v, char *r, char *g, char *b) {
-    int c = y - 16;
-	int d = u - 128;
-	int e = v - 128;
-
-    int r1 = (298 * c           + 409 * e + 128) >> 8;
-    int g1 = (298 * c - 100 * d - 208 * e + 128) >> 8;
-    int b1 = (298 * c + 516 * d           + 128) >> 8;
-
-    // Even with proper conversion, some values still need clipping.
-    *r = r1 > 255 ? 255 : r1 < 0 ? 0 : r1;
-    *g = g1 > 255 ? 255 : g1 < 0 ? 0 : g1;
-    *b = b1 > 255 ? 255 : b1 < 0 ? 0 : b1;
-}
-
-// converts an array of pixels from YUYV color to RGB color
-void array_YUYV2RGB(unsigned char *dest, const void *src, int width, int height) {
-    for(int y = 0; y < height; y++) {
-        unsigned char *line = (unsigned char *)src + y * width * 2;
-        for(int x = 0; x < width; x += 2) {
-            int Y0 = line[2 * x + 0];
-            int U  = line[2 * x + 1];
-            int Y1 = line[2 * x + 2];
-            int V  = line[2 * x + 3];
-
-            for (int j = 0; j < 2; j++) {
-                char r, g, b;
-                pixel_YUV2RGB(Y0, U, V, &r, &g, &b);
-                int l = (y * width + x + j) * 4;
-                dest[l + 0] = b;
-                dest[l + 1] = g;
-                dest[l + 2] = r;
-                dest[l + 3] = 255;
-            }
-        }
-    }
-}
-
-static void process_image (const void* p) {
-    array_YUYV2RGB(screen->pixels, p, 640, 480);
-    SDL_Flip(screen);
-}
-
-static unsigned char* read_frame (void) {
-    struct v4l2_buffer buf;
-    unsigned int i;
-
-    switch (io) {
-    case IO_METHOD_READ:
-        if (-1 == read (fd, buffers[0].start, buffers[0].length)) {
-            switch (errno) {
-                case EAGAIN: return NULL;
-                case EIO: /* Could ignore EIO, see spec. fall through */
-                default: errno_exit ("read");
-            }
-        }
-
-        process_image (buffers[0].start);
-        break;
-    case IO_METHOD_MMAP:
-        CLEAR (buf);
-        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        buf.memory = V4L2_MEMORY_MMAP;
-
-        if (-1 == xioctl (fd, VIDIOC_DQBUF, &buf)) {
-            switch (errno) {
-                case EAGAIN: return NULL;
-                case EIO: /* Could ignore EIO, see spec. fall through */
-                default: errno_exit ("VIDIOC_DQBUF");
-            }
-        }
-
-        assert (buf.index < n_buffers);
-        process_image (buffers[buf.index].start);
-
-        if (-1 == xioctl (fd, VIDIOC_QBUF, &buf))
-            errno_exit ("VIDIOC_QBUF");
-        break;
-    case IO_METHOD_USERPTR:
-        CLEAR (buf);
-
-        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        buf.memory = V4L2_MEMORY_USERPTR;
-
-        if (-1 == xioctl (fd, VIDIOC_DQBUF, &buf)) {
-            switch (errno) {
-                case EAGAIN: return NULL;
-                case EIO: /* Could ignore EIO, see spec. fall through */
-                default: errno_exit ("VIDIOC_DQBUF");
-            }
-        }
-
-        for (i = 0; i < n_buffers; ++i)
-            if (buf.m.userptr == (unsigned long)buffers[i].start
-                    && buf.length == buffers[i].length) break;
-
-        assert(i < n_buffers);
-        process_image((void*)buf.m.userptr);
-
-        if (xioctl(fd, VIDIOC_QBUF, &buf) == -1) errno_exit ("VIDIOC_QBUF");
-
-        break;
-    }
-
-    return buffers[buf.index].start;
-}
-
-void getArray(frame* f) {
-    if (f == NULL) return;
-    f->width = 640;
-    f->height = 480;
-    f->array = read_frame();
-}
-
-static void mainloop(void) {
-    SDL_Event event;
-	frame *f = (frame *)malloc(sizeof(frame));
-
-    do {
-        getArray(f);
-        SDL_PollEvent(&event);
-    } while (event.type != SDL_QUIT && event.type != SDL_KEYDOWN);
-}
-
 static void stop_capturing (void) {
     enum v4l2_buf_type type;
 
@@ -495,6 +363,131 @@ static void init_device (void) {
     }
 }
 
+// SDL format: 32 bits: 8 red, 8 green, 8 blue, 8 alpha
+// 0xrrggbbaa
+
+//                p1    p2      pixel 1 and 2
+// YUYV format: [Y1,U][Y2,V]
+// YCbCr is the same as YUV
+
+// converts a pixel from YUV color to RGB color
+void pixel_YUV2RGB(int y, int u, int v, char *r, char *g, char *b) {
+    int c = y - 16;
+	int d = u - 128;
+	int e = v - 128;
+
+    int r1 = (298 * c           + 409 * e + 128) >> 8;
+    int g1 = (298 * c - 100 * d - 208 * e + 128) >> 8;
+    int b1 = (298 * c + 516 * d           + 128) >> 8;
+
+    // Even with proper conversion, some values still need clipping.
+    *r = r1 > 255 ? 255 : r1 < 0 ? 0 : r1;
+    *g = g1 > 255 ? 255 : g1 < 0 ? 0 : g1;
+    *b = b1 > 255 ? 255 : b1 < 0 ? 0 : b1;
+}
+
+// converts an array of pixels from YUYV color to RGB color
+void array_YUYV2RGB(unsigned char *dest, const void *src, int width, int height) {
+    for(int y = 0; y < height; y++) {
+        unsigned char *line = (unsigned char *)src + y * width * 2;
+        for(int x = 0; x < width; x += 2) {
+            int Y0 = line[2 * x + 0];
+            int U  = line[2 * x + 1];
+            int Y1 = line[2 * x + 2];
+            int V  = line[2 * x + 3];
+
+            for (int j = 0; j < 2; j++) {
+                char r, g, b;
+                pixel_YUV2RGB(Y0, U, V, &r, &g, &b);
+                int l = (y * width + x + j) * 4;
+                dest[l + 0] = b;
+                dest[l + 1] = g;
+                dest[l + 2] = r;
+                dest[l + 3] = 255;
+            }
+        }
+    }
+}
+
+static void process_image (const void* p) {
+}
+
+static unsigned char* read_frame (int *a) {
+    struct v4l2_buffer buf;
+    unsigned int i;
+
+    switch (io) {
+    case IO_METHOD_READ:
+        if (-1 == read (fd, buffers[0].start, buffers[0].length)) {
+            switch (errno) {
+                case EAGAIN: return NULL;
+                case EIO: /* Could ignore EIO, see spec. fall through */
+                default: errno_exit ("read");
+            }
+        }
+
+        process_image (buffers[0].start);
+        break;
+    case IO_METHOD_MMAP:
+        CLEAR (buf);
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+
+        if (-1 == xioctl (fd, VIDIOC_DQBUF, &buf)) {
+            switch (errno) {
+                case EAGAIN: return NULL;
+                case EIO: /* Could ignore EIO, see spec. fall through */
+                default: errno_exit ("VIDIOC_DQBUF");
+            }
+        }
+
+        assert (buf.index < n_buffers);
+
+        array_YUYV2RGB((unsigned char *)a, buffers[buf.index].start, 640, 480);
+
+        if (-1 == xioctl (fd, VIDIOC_QBUF, &buf))
+            errno_exit ("VIDIOC_QBUF");
+        break;
+    case IO_METHOD_USERPTR:
+        CLEAR (buf);
+
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_USERPTR;
+
+        if (-1 == xioctl (fd, VIDIOC_DQBUF, &buf)) {
+            switch (errno) {
+                case EAGAIN: return NULL;
+                case EIO: /* Could ignore EIO, see spec. fall through */
+                default: errno_exit ("VIDIOC_DQBUF");
+            }
+        }
+
+        for (i = 0; i < n_buffers; ++i)
+            if (buf.m.userptr == (unsigned long)buffers[i].start
+                    && buf.length == buffers[i].length) break;
+
+        assert(i < n_buffers);
+        process_image((void*)buf.m.userptr);
+
+        if (xioctl(fd, VIDIOC_QBUF, &buf) == -1) errno_exit ("VIDIOC_QBUF");
+
+        break;
+    }
+
+    return buffers[buf.index].start;
+}
+
+void startVideo() {
+    dev_name = "/dev/video0";
+    init_device();
+    start_capturing();
+}
+
+void stopVideo() {
+    uninit_device();
+    stop_capturing();
+}
+
 static void usage (FILE* fp, int argc, char** argv) {
     fprintf (fp,
             "Usage: %s [options]\n\n"
@@ -553,10 +546,14 @@ int main (int argc, char** argv) {
         }
     }
 
-    init_device ();
-    start_capturing ();
-    mainloop ();
-    stop_capturing ();
-    uninit_device ();
+    startVideo();
+    SDL_Event event;
+    do {
+        read_frame(screen->pixels);
+        SDL_Flip(screen);
+        SDL_PollEvent(&event);
+    } while (event.type != SDL_QUIT && event.type != SDL_KEYDOWN);
+    stopVideo();
+
     exit (EXIT_SUCCESS);
 }
