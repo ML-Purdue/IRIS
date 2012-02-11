@@ -69,17 +69,3 @@ void click_mouse (int button)
     XCloseDisplay(dpy);
 }
 
-
-
-/*
-   int main (int argc, char *argv[]) {
-
-   init_cursor();
-   set_cursor(100, 100);
-
-
-
-
-   return 0;
-   }
-   */

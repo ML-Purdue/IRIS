@@ -1,6 +1,7 @@
 #include <SDL/SDL.h>
 #include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 #define WIDTH 420
 #define HEIGHT 500
@@ -9,7 +10,8 @@
 
 #define HIST_W 100
 
-#define THRESH 50
+#define HI_THRESH 140
+#define LOW_THRESH 50
 
 SDL_Surface * screen = NULL;
 SDL_Surface * image = NULL;
@@ -25,7 +27,7 @@ void apply_surface( int x, int y, SDL_Surface * src, SDL_Surface * dest);
 int
 load_files()
 {
-    image = load_image("face.bmp");
+    image = load_image("cropc1dan.bmp");
     if (image == NULL) {
         return -1;
     }
@@ -114,7 +116,8 @@ void clean_up () {
 }
 
 // Generates an array containing the normalized dark-density for each row
-int *rowhist (SDL_Surface *src) {
+// type 0 - upthresh, 1 - downthresh
+int *rowhist (SDL_Surface *src, int type) {
     int x, y, ytimesw;
     int *rowsum = (int *) malloc(sizeof(int) * src->h);
     int rowmax = -1;
@@ -129,7 +132,9 @@ int *rowhist (SDL_Surface *src) {
         for (x = 0; x < src->w; x++) {
             color = *pixmem32;
             SDL_GetRGB (color, src->format, &r, &g, &b);
-            if (r < THRESH && g < THRESH && b < THRESH) {
+            if (type == 0 && r > HI_THRESH && g > HI_THRESH && b > HI_THRESH) {
+                rowsum[y]++;
+            } else if (type == 1 && r < LOW_THRESH && g < LOW_THRESH && b < LOW_THRESH) {
                 rowsum[y]++;
             }
             pixmem32++;
@@ -139,16 +144,18 @@ int *rowhist (SDL_Surface *src) {
         }
     }
 
-    for (int y = 0; y < src->h; y++) {
-        rowsum[y] *= HIST_W;
-        rowsum[y] /= rowmax;
+    if (rowmax != 0) {
+        for (int y = 0; y < src->h; y++) {
+            rowsum[y] *= HIST_W;
+            rowsum[y] /= rowmax;
+        }
     }
 
     return rowsum;
 }
 
 // Generates an array containing the normalized dark-density for each column
-int *colhist (SDL_Surface *src) {
+int *colhist (SDL_Surface *src, int type) {
     int x, y, ytimesw;
     int *colsum = (int *) malloc(sizeof(int) * src->w);
     int colmax = -1;
@@ -166,7 +173,9 @@ int *colhist (SDL_Surface *src) {
         for (x = 0; x < src->w; x++) {
             color = *pixmem32;
             SDL_GetRGB (color, src->format, &r, &g, &b);
-            if (r < THRESH && g < THRESH && b < THRESH) {
+            if (type == 0 && r > HI_THRESH && g > HI_THRESH && b > HI_THRESH) {
+                colsum[x]++;
+            } else if (type == 1 && r < LOW_THRESH && g < LOW_THRESH && b < LOW_THRESH) {
                 colsum[x]++;
             }
             pixmem32++;
@@ -179,9 +188,11 @@ int *colhist (SDL_Surface *src) {
         }
     }
 
-    for (x = 0; x < src->w; x++) {
-        colsum[x] *= HIST_W;
-        colsum[x] /= colmax;
+    if (colmax != 0) {
+        for (x = 0; x < src->w; x++) {
+            colsum[x] *= HIST_W;
+            colsum[x] /= colmax;
+        }
     }
 
     return colsum;
@@ -222,9 +233,12 @@ int * localMaxes (int *data, int len, int WINDOW){
 
 int draw_hist (SDL_Surface *src, SDL_Surface *dest) {
     int x, y, ytimesw;
-    int *rowsum, *colsum;
-    rowsum = rowhist(src);
-    colsum = colhist(src);
+    int *rowwhites, *colwhites;
+    int *rowblacks, *colblacks;
+    rowwhites = rowhist(src, 0);
+    colwhites = colhist(src, 0);
+    rowblacks = rowhist(src, 1);
+    colblacks = colhist(src, 1);
 
 
     if(SDL_MUSTLOCK(dest))
@@ -235,7 +249,7 @@ int draw_hist (SDL_Surface *src, SDL_Surface *dest) {
     // Draw histogram for rows
     for (int y = 0; y < src->h; y++) {
         ytimesw = y * dest->pitch / BPP;
-        for (int x = 0; x < rowsum[y]; x++) {
+        for (int x = 0; x < rowwhites[y]; x++) {
             setpixel(dest, x, ytimesw, 0, 255, 0);
         }
     }
@@ -243,7 +257,7 @@ int draw_hist (SDL_Surface *src, SDL_Surface *dest) {
     // Draw histogram for cols
     // TODO: optimize
     for (x = 0; x < src->w; x++) {
-        for (int i = colsum[x]; i > 0; i--) {
+        for (int i = colwhites[x]; i > 0; i--) {
             y = HIST_W + src->h - i;
             ytimesw = y * dest->pitch / BPP;
             setpixel(dest, x + HIST_W, ytimesw, 0, 255, 0);
@@ -251,13 +265,27 @@ int draw_hist (SDL_Surface *src, SDL_Surface *dest) {
     }
 
     const int WINDOW = 10;
-    int * rowMaxes = localMaxes(rowsum, src->h, 10);
-    int * colMaxes = localMaxes(colsum, src->w, 30);
+    int * rowMaxes = localMaxes(rowwhites, src->h, 10);
+    int * colMaxes = localMaxes(colwhites, src->w, 10);
     for (y = 0; y < src->h; y++) {
         ytimesw = y * dest->pitch / BPP;
         for (x = 0; x < src->w; x++) {
             if (rowMaxes[y]) {
                 setpixel(dest, x + HIST_W, ytimesw, 255, 0, 0);
+            }
+            if (colMaxes[x]) {
+                setpixel(dest, x + HIST_W, ytimesw, 255, 0, 0);
+            }
+        }
+    }
+
+    rowMaxes = localMaxes(rowblacks, src->h, 10);
+    colMaxes = localMaxes(colblacks, src->w, 10);
+    for (y = 0; y < src->h; y++) {
+        ytimesw = y * dest->pitch / BPP;
+        for (x = 0; x < src->w; x++) {
+            if (rowMaxes[y]) {
+                setpixel(dest, x + HIST_W, ytimesw, 0, 0, 255);
             }
             if (colMaxes[x]) {
                 setpixel(dest, x + HIST_W, ytimesw, 0, 0, 255);
@@ -266,35 +294,7 @@ int draw_hist (SDL_Surface *src, SDL_Surface *dest) {
     }
 
 
-
     if(SDL_MUSTLOCK(dest)) SDL_UnlockSurface(dest);
-
-    /*
-
-    for (int x = 0; x < src->w; x++) {
-        winstart = x - WINDOW < 0      ? 0      : x-WINDOW;
-        winend   = x + WINDOW > src->w ? src->w : x+WINDOW;
-        max = 0;
-        maxloc = winstart;
-        for (int i = winstart; i < winend; i++) {
-            if (colsum[i] > max) {
-                max = colsum[i];
-                maxloc = i;
-            }
-        }
-
-        if (maxloc == x) {
-            for (int y = 0; y < src->h; y++) {
-                ytimesw = y * dest->pitch / BPP;
-                setpixel(dest, x + HIST_W, ytimesw, 0, 0, 255);
-            }
-        }
-    }
-    */
-
-
-
-
 
     return 0;
 }
@@ -327,13 +327,19 @@ main (int argc, char * argv[])
 
     apply_surface(HIST_W, 0, image, screen);
 
-    time_t start = time(&start);
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
     draw_hist(image, screen);
-    time_t end = time(&end);
+    gettimeofday(&end, NULL);
 
-    double diff = difftime(end, start);
+    long seconds  = end.tv_sec  - start.tv_sec;
+    long useconds = end.tv_usec - start.tv_usec;
 
-    printf("Drew histograms in %f sec\n", diff);
+    long mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
+
+
+
+    printf("time: %li\n", mtime);
 
     SDL_Flip(screen);
 
