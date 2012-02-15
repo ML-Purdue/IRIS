@@ -4,12 +4,6 @@
 #include <linux/videodev2.h>
 
 //Data structure definitions
-typedef enum {
-    IO_METHOD_READ,
-    IO_METHOD_MMAP,
-    IO_METHOD_USERPTR,
-} io_method;
-
 struct buffer {
     void* start;
     size_t length;
@@ -22,12 +16,10 @@ static void pixel_YUV2RGB(int y, int u, int v, char *r, char *g, char *b);
 static void array_YUYV2RGB(void *Dest, const void *src, int width, int height);
 
 //Public Init functions
-void startVideo(const char *dev_name, io_method io);
+void startVideo(const char *dev_name);
 //Private Init functions
 static void start_capturing (void);
-static void init_read(unsigned int buffer_size);
 static void init_mmap (void);
-static void init_userp (unsigned int buffer_size);
 static void init_device (void);
 
 //Public Uninit functions

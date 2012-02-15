@@ -6,26 +6,20 @@
 
 #include "videoTest.h"
 
-static const char short_options [] = "d:hmru";
+static const char short_options [] = "d:h";
 
 static void print_usage (FILE* fp, int argc, char** argv) {
     fprintf (fp,
             "Usage: %s [options]\n\n"
             "Options:\n"
             "-d | --device name   Video device name [/dev/video0]\n"
-            "-h | --help   Print this message\n"
-            "-m | --mmap   Use memory mapped buffers\n"
-            "-r | --read   Use read() calls\n"
-            "-u | --userp  Use application allocated buffers\n",
+            "-h | --help   Print this message\n",
             argv[0]);
 }
 
 static const struct option long_options [] = {
     {"device", required_argument, NULL, 'd'},
     {"help", no_argument, NULL, 'h'},
-    {"mmap", no_argument, NULL, 'm'},
-    {"read", no_argument, NULL, 'r'},
-    {"userp", no_argument, NULL, 'u'},
     {0, 0, 0, 0}
 };
 
@@ -34,7 +28,6 @@ int main (int argc, char** argv) {
     SDL_Init(SDL_INIT_EVERYTHING);
     SDL_Surface *screen = SDL_SetVideoMode(640, 480, 32, SDL_SWSURFACE);
     const char *dev_name = "/dev/video0";
-    io_method io = IO_METHOD_MMAP;
 
     //Parse command-line arguments
     while (1) {
@@ -52,15 +45,6 @@ int main (int argc, char** argv) {
             print_usage (stdout, argc, argv);
             return 0;
             break;
-        case 'm':
-            io = IO_METHOD_MMAP;
-            break;
-        case 'r':
-            io = IO_METHOD_READ;
-            break;
-        case 'u':
-            io = IO_METHOD_USERPTR;
-            break;
         default:
             print_usage (stderr, argc, argv);
             return -1;
@@ -69,7 +53,7 @@ int main (int argc, char** argv) {
     }
 
     //Init frame grabbing
-    startVideo(dev_name, io);
+    startVideo(dev_name);
 
     //Grab frames and put them on the screen
     SDL_Event event;
