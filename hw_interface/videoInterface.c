@@ -305,7 +305,7 @@ void startVideo(const char *dev_name) {
 void stopVideo() {
     free(video_node);
 
-    uninit_device();
     stop_capturing();
+    uninit_device();
 }
 
