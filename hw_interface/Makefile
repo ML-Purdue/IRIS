@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-g -std=gnu99
-LDFLAGS=-lSDL -ldl -lm -lpthread
+LDFLAGS=-lSDL
 
 SOURCES=videoInterface.c
 OBJECTS=$(SOURCES:.c=.o)

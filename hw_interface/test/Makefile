@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=-g -std=gnu99
-LDFLAGS=-lSDL -ldl -lm -lpthread
+LDFLAGS=-lSDL
 
 .PHONY: all clean
 
