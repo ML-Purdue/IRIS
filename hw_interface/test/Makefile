@@ -2,12 +2,12 @@ CC=gcc
 CFLAGS=-g -std=c99
 LDFLAGS=-lSDL -ldl -lm -lpthread
 
-SOURCES=videoInterface.c
-OBJECTS=$(SOURCES:.c=.o)
-
 .PHONY: all clean
 
-all: $(OBJECTS)
+all: videoTest
+
+videoTest: ../videoInterface.o videoTest.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 clean:
 	rm -rf *.o
