@@ -23,4 +23,4 @@ tracker: tracker.o histogram.o ../hw_interface/videoInterface.o
 	$(CC) -o tracker $^ $(LDFLAGS) 
 
 clean:
-	rm -f *.o SDL_test cursor_test histogram
+	rm -f *.o SDL_test cursor_test histogram tracker
