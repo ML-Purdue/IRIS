@@ -1,9 +1,9 @@
 #include <stdio.h>
 //For SDL screen display
 #include <SDL/SDL.h>
-#include "videoTest.h"
+#include "../hw_interface/videoTest.h"
 
-#include "../applications/histogram.h"
+#include "histogram.h"
 
 #define WIDTH 640
 #define HEIGHT 480
