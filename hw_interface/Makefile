@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g -std=c99
+CFLAGS=-g -std=gnu99
 LDFLAGS=-lSDL -ldl -lm -lpthread
 
 SOURCES=videoInterface.c
