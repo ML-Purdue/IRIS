@@ -2,16 +2,16 @@ CC = gcc -g
 CFLAGS=-std=c99 -g
 LDFLAGS=-lSDL -ldl -lm -lpthread
 
-all: histclient histogram.o test cursor.o circle 
+all: histclient histogram.o cursor.o circle tracker
 
 test: SDL_test.c
 	$(CC) -lSDL -lSDL_ttf -o SDL_test SDL_test.c $(CFLAGS)
 
 cursor.o: cursor.c cursor.h
-	$(CC) -lX11 -c cursor.c $(CFLAGS)
+	$(CC) -c cursor.c $(CFLAGS) -lX11 
 
 circle: cursor.o cursor_test.c
-	$(CC) -lX11 -lm -o cursor_test cursor.o cursor_test.c $(CFLAGS)
+	$(CC) -o cursor_test cursor.o cursor_test.c $(CFLAGS) -lX11 -lm 
 
 histogram.o: histogram.c histogram.h
 	$(CC) -c histogram.c $(LDFLAGS) $(CFLAGS)
