@@ -39,7 +39,7 @@ void fill_array(pix_array pix, frame *f);
 pixel center(pix_array pix);
 
 //Remove pixels greater than the average distance from the center
-void trim_array(pix_array pix);
+void trim_array(pix_array *pix);
 
 void fill_array(pix_array pix, frame *f){
     int threshold = 0;
@@ -81,6 +81,31 @@ pixel center(pix_array pix){
     center_pixel.dist = 0;
     return center_pixel;
 }
+
+//Remove pixels greater than the average distance from the center
+void trim_array(pix_array *p_array)
+{
+	pixel p = center(*p_array);
+	int centerX = p.x;
+	int centerY = p.y;
+	
+	unsigned int sum = 0;
+	for(int i=0; i < p_array->length; i++) {
+		p_array->array[i].dist = 0.5 + sqrt(( p_array->array[i].x - centerX ) * ( p_array->array[i].x - centerX )
+									  + ( p_array->array[i].y - centerY ) * ( p_array->array[i].y - centerY ));
+		sum += p_array->array[i].dist;
+	}
+	
+	int average = sum / p_array->length;
+	int t = 0;
+	for(int i = 0; i < p_array->length; i++) {
+		if (p_array->array[i].dist <= average) {
+			p_array->array[t++] = p_array->array[i];
+		}
+	}
+	p_array->length = t; 
+}
+
 
 void drawCrosshair(SDL_Surface *image, int w, int h, int px, int py) {
     int *p = (int *)image->pixels;
