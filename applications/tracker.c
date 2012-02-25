@@ -17,8 +17,14 @@ typedef struct {
     int dist;
 } pixel;
 
+typedef struct {
+    unsigned short w;
+    unsigned short h;
+    int *img;
+} frame;
+
 //Fills the array with pixels greater than a threshold
-void fill_array(pixel *array);
+void fill_array(pixel *array, frame *f);
 
 //Returns the center of the array
 pixel center(pixel *array);
