@@ -1,7 +1,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
 #include <stdio.h>
-#include<cmath>
+#include <math.h>
 
 #include "SDL_test.h"
 
@@ -153,45 +153,45 @@ void clean_up () {
 	TTF_Quit();
 	SDL_Quit();
 }
-void SDL_DrawCircle(SDL_Surface *screen, const Uint16 x, const Uint16 y, const Uint8 r, const Uint8 bpp, const Uint8 R, const Uint8 G, const Uint8 B) 
-{ 
-	Uint32 color1 = SDL_MapRGB(screen->format, R, G, B); 
-	Uint32 *bufp1,*bufp2; 
-	Uint16 rsqr = r*r,tx,tx1,tx2,ty,ty1,ty2; 
-	float tmpy,tmpx; 
+void SDL_DrawCircle(SDL_Surface *screen, const Uint16 x, const Uint16 y, const Uint8 r, const Uint8 bpp, const Uint8 R, const Uint8 G, const Uint8 B)
+{
+	Uint32 color1 = SDL_MapRGB(screen->format, R, G, B);
+	Uint32 *bufp1,*bufp2;
+	Uint16 rsqr = r*r,tx,tx1,tx2,ty,ty1,ty2;
+	float tmpy,tmpx;
 
-	tmpx= -ceil(r/sqrt((float)2)); 
-	while(tmpx <= (float) r) 
-	{ 
-		if( (float)fabs(tmpx) < (float)r/sqrt((float)2)){ 
-			tmpy = sqrt((float)(rsqr - pow(tmpx,2))); 
-			ty1=y+ (Uint16) floor(tmpy+0.5); 
-			ty2=y- (Uint16) floor(tmpy+0.5); 
-			tx=x-(Uint16) tmpx; 
-			bufp1 = (Uint32 *)screen->pixels + ty1*screen->pitch/bpp + tx; 
-			bufp2 = (Uint32 *)screen->pixels + ty2*screen->pitch/bpp + tx; 
-			*bufp1 = color1; 
-			*bufp2 = color1; 
-		} 
-		tmpx++; 
-	} 
-	tmpy = -ceil(r/sqrt((float)2)); 
-	while(tmpy <= (float) r) 
-	{ 
-		if( (float)fabs(tmpy) < (float)r/sqrt((float)2)){ 
-			tmpx = sqrt((float)(rsqr - pow(tmpy,2))); 
-			tx1=x+ (Uint16) floor(tmpx+0.5); 
-			tx2=x- (Uint16) floor(tmpx+0.5); 
-			ty=y-(Uint16) tmpy; 
-			bufp1 = (Uint32 *)screen->pixels + ty*screen->pitch/bpp + tx1; 
-			bufp2 = (Uint32 *)screen->pixels + ty*screen->pitch/bpp + tx2; 
-			*bufp1 = color1; 
-			*bufp2 = color1; 
-		} 
-		tmpy++; 
-	} 
+	tmpx= -ceil(r/sqrt((float)2));
+	while(tmpx <= (float) r)
+	{
+		if( (float)fabs(tmpx) < (float)r/sqrt((float)2)){
+			tmpy = sqrt((float)(rsqr - pow(tmpx,2)));
+			ty1=y+ (Uint16) floor(tmpy+0.5);
+			ty2=y- (Uint16) floor(tmpy+0.5);
+			tx=x-(Uint16) tmpx;
+			bufp1 = (Uint32 *)screen->pixels + ty1*screen->pitch/bpp + tx;
+			bufp2 = (Uint32 *)screen->pixels + ty2*screen->pitch/bpp + tx;
+			*bufp1 = color1;
+			*bufp2 = color1;
+		}
+		tmpx++;
+	}
+	tmpy = -ceil(r/sqrt((float)2));
+	while(tmpy <= (float) r)
+	{
+		if( (float)fabs(tmpy) < (float)r/sqrt((float)2)){
+			tmpx = sqrt((float)(rsqr - pow(tmpy,2)));
+			tx1=x+ (Uint16) floor(tmpx+0.5);
+			tx2=x- (Uint16) floor(tmpx+0.5);
+			ty=y-(Uint16) tmpy;
+			bufp1 = (Uint32 *)screen->pixels + ty*screen->pitch/bpp + tx1;
+			bufp2 = (Uint32 *)screen->pixels + ty*screen->pitch/bpp + tx2;
+			*bufp1 = color1;
+			*bufp2 = color1;
+		}
+		tmpy++;
+	}
 
-} 
+}
 
 int poll_keypress (){
 	SDL_Event event;
@@ -259,7 +259,7 @@ int main(int argc, char* argv[])
 	message=NULL;
 	SDL_FillRect(screen,NULL, background_color);
 //	SDL_FillRect(screen, NULL, background_color);
-	// rasterCircle(500,500,100,screen);	
+	// rasterCircle(500,500,100,screen);
 //	SDL_DrawCircle(screen, 500,500,100,BPP,255,255,255);
 	if(ms1 ==NULL){
 		fprintf(stderr, "Could not render the message.\n");

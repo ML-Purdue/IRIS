@@ -111,7 +111,7 @@ main (int argc, char * argv[])
 
     SDL_Flip(screen);
 
-    while (true) {
+    while (1) {
 
         if (poll_keypress() == 1){
             clean_up();
