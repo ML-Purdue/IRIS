@@ -1,13 +1,30 @@
 #include <stdio.h>
 //For SDL screen display
 #include <SDL/SDL.h>
-#include "../hw_interface/videoTest.h"
+
+#include "../hw_interface/videoInterface.h"
 
 #include "histogram.h"
 
 #define WIDTH 640
 #define HEIGHT 480
 #define H_WIDTH 100
+
+typedef struct {
+    unsigned short x;
+    unsigned short y;
+    int intensity;
+    int dist;
+} pixel;
+
+//Fills the array with pixels greater than a threshold
+void fill_array(pixel *array);
+
+//Returns the center of the array
+pixel center(pixel *array);
+
+//Remove pixels greater than the average distance from the center
+void trim_array(pixel *array);
 
 void drawCrosshair(SDL_Surface *image, int w, int h, int px, int py) {
 	int *p = (int *)image->pixels;
@@ -48,6 +65,8 @@ int main () {
     SDL_Init(SDL_INIT_EVERYTHING);
     SDL_Surface *screen = SDL_SetVideoMode(WIDTH + H_WIDTH, HEIGHT + H_WIDTH, 32, SDL_SWSURFACE);
 	SDL_Surface *buffer = SDL_CreateRGBSurface(SDL_SWSURFACE, WIDTH, HEIGHT, 32, 0, 0, 0, 0);
+
+    pixel *array;
 
     //Init frame grabbing
     startVideo("/dev/video1");
