@@ -1,6 +1,7 @@
 #include <stdio.h>
 //For SDL screen display
 #include <SDL/SDL.h>
+#include <math.h>
 
 #include "../hw_interface/videoInterface.h"
 
@@ -18,19 +19,47 @@ typedef struct {
 } pixel;
 
 typedef struct {
+    int length;
+    pixel *array;
+} pix_array;
+
+typedef struct {
     unsigned short w;
     unsigned short h;
     int *img;
+    unsigned int rmask;
+    unsigned int gmask;
+    unsigned int bmask;
 } frame;
 
 //Fills the array with pixels greater than a threshold
-void fill_array(pixel *array, frame *f);
+void fill_array(pix_array array, frame *f);
 
 //Returns the center of the array
-pixel center(pixel *array);
+pixel center(pix_array array);
 
 //Remove pixels greater than the average distance from the center
-void trim_array(pixel *array);
+void trim_array(pix_array array);
+
+void fill_array(pix_array array, frame *f){
+    int threshold = 0;
+
+    for(int y = 0; y < f->h; y++){
+        for(int x = 0; x < f->w; x++){
+            double r = (double)(f->img[y * f->w + x] & f->rmask);
+            double g = (double)(f->img[y * f->w + x] & f->gmask);
+            double b = (double)(f->img[y * f->w + x] & f->bmask);
+            int intensity = sqrt((r*r)+(g*g)+(b*b));
+            if(intensity > threshold){
+                array.array[array.length].x = x;
+                array.array[array.length].y = y;
+                array.array[array.length].intensity = intensity;
+                array.array[array.length].dist = 0;
+                array.length++;
+            }
+        }
+    }
+}
 
 void drawCrosshair(SDL_Surface *image, int w, int h, int px, int py) {
 	int *p = (int *)image->pixels;
