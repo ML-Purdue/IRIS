@@ -1,5 +1,5 @@
 CC = gcc -g
-CFLAGS=-std=c99 -g
+CFLAGS=-std=gnu99 -g
 LDFLAGS=-lSDL -ldl -lm -lpthread
 
 all: histclient histogram.o test cursor.o circle 
