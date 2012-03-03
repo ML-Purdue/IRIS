@@ -51,7 +51,7 @@ void fill_array(pix_array *pix, frame *f, int threshold);
 pixel center(pix_array pix, int w, int h);
 
 //Remove pixels greater than the average distance from the center
-void trim_array(pix_array *pix, pixel center);
+void trim_array(pix_array *pix, pixel center, int dist);
 
 void fill_array(pix_array *pix, frame *f, int threshold){
     for(int y = 0; y < f->h; y++){
@@ -79,40 +79,44 @@ pixel center(pix_array pix, int w, int h){
 		center_pixel.dist = 0;
 		return center_pixel;
 	}
-    unsigned short sum_x = 0;
-    unsigned short sum_y = 0;
+    unsigned long sum_x = 0;
+    unsigned long sum_y = 0;
     int sum_intensity = 0;
     for(int i = 0; i < pix.length;  i++){
-        sum_x = sum_x + pix.array->x;
-        sum_y = sum_y + pix.array->y; 
-        sum_intensity = sum_intensity + pix.array->intensity;
+        sum_x = sum_x + pix.array[i].x;
+        sum_y = sum_y + pix.array[i].y; 
+        sum_intensity = sum_intensity + pix.array[i].intensity;
     }
-    unsigned short center_x = sum_x/w; 
-    unsigned short center_y = sum_y/h; 
+    unsigned long center_x = sum_x/pix.length; 
+    unsigned long center_y = sum_y/pix.length; 
     int center_intensity = sum_intensity/pix.length; 
-    center_pixel.x = center_x;
-    center_pixel.y = center_y;
+    center_pixel.x = (unsigned short)center_x;
+    center_pixel.y = (unsigned short)center_y;
     center_pixel.intensity = center_intensity; 
     center_pixel.dist = 0;
     return center_pixel;
 }
 
 //Remove pixels greater than the average distance from the center
-void trim_array(pix_array *p_array, pixel center) {
+void trim_array(pix_array *p_array, pixel center, int dist) {
 	int centerX = center.x;
 	int centerY = center.y;
+
+    if(p_array->length == 0){
+        return;
+    }
 	
-	unsigned int sum = 0;
+	//unsigned int sum = 0;
 	for(int i=0; i < p_array->length; i++) {
 		p_array->array[i].dist = 0.5 + sqrt(( p_array->array[i].x - centerX ) * ( p_array->array[i].x - centerX )
 									  + ( p_array->array[i].y - centerY ) * ( p_array->array[i].y - centerY ));
-		sum += p_array->array[i].dist;
+		//sum += p_array->array[i].dist;
 	}
 	
-	int average = sum / p_array->length;
+	//int average = sum / p_array->length;
 	int t = 0;
 	for(int i = 0; i < p_array->length; i++) {
-		if (p_array->array[i].dist <= average) {
+		if (p_array->array[i].dist <= dist) {
 			p_array->array[t++] = p_array->array[i];
 		}
 	}
@@ -168,16 +172,31 @@ int main () {
 
     //Grab frames and put them on the screen
     SDL_Event event;
+    pixel p = { 0 };
+    pixel c = { 0 };
+
     do {
         read_frame(screen->pixels);
 		memcpy(f.img, screen->pixels, WIDTH * HEIGHT * sizeof(int));
+
 		pix.length = 0;
-		fill_array(&pix, &f, 50);
-		pixel c = center(pix, WIDTH, HEIGHT);
-		if (c.x != 0) {
-			printf("Drawing crosshair x %d y %d\n", c.x, c.y);
+		fill_array(&pix, &f, 20);
+
+        printf("len: %d\n", pix.length);
+
+        trim_array(&pix, p, 50);
+
+		c = center(pix, WIDTH, HEIGHT);
+        if(c.x != 0 && c.y != 0)
+            p = c;
+
+		if (c.x != 0 && c.y != 0) {
+			printf("Drawing crosshair x %u y %u\n", c.x, c.y);
 			drawCrosshair(screen, WIDTH, HEIGHT, c.x, c.y);
-		}
+		}else{
+			printf("Drawing crosshair x %u y %u\n", p.x, p.y);
+			drawCrosshair(screen, WIDTH, HEIGHT, p.x, p.y);
+        }
         /* process_image(screen, buffer, 640, 480); */
 
         /* blit(0, 480 - H_WIDTH, buffer, screen); */
