@@ -10,6 +10,8 @@
 #define WIDTH 640
 #define HEIGHT 480
 #define H_WIDTH 100
+#define DARK 1
+#define LIGHT 0
 
 typedef struct {
     unsigned short x;
@@ -27,13 +29,13 @@ typedef struct {
     unsigned short w;
     unsigned short h;
     int *img;
-	SDL_PixelFormat *fmt;
+    SDL_PixelFormat *fmt;
 } frame;
 
 float getBrightness(int pixel, SDL_PixelFormat *fmt) {
-	unsigned char r, g, b;
-	SDL_GetRGB(pixel, fmt, &r, &g, &b);
-	return (r + g + b) / 3.0;
+    unsigned char r, g, b;
+    SDL_GetRGB(pixel, fmt, &r, &g, &b);
+    return (r + g + b) / 3.0;
 }
 
 void blit (int x, int y, SDL_Surface * source, SDL_Surface * dest) {
@@ -45,7 +47,7 @@ void blit (int x, int y, SDL_Surface * source, SDL_Surface * dest) {
 }
 
 //Fills the array with pixels greater than a threshold
-void fill_array(pix_array *pix, frame *f, int threshold);
+void fill_array(pix_array *pix, frame *f, int threshold, int pick_dark);
 
 //Returns the center of the array
 pixel center(pix_array pix, int w, int h);
@@ -53,12 +55,12 @@ pixel center(pix_array pix, int w, int h);
 //Remove pixels greater than the average distance from the center
 void trim_array(pix_array *pix, pixel center, int dist);
 
-void fill_array(pix_array *pix, frame *f, int threshold){
+void fill_array(pix_array *pix, frame *f, int threshold, int pick_dark){
     for(int y = 0; y < f->h; y++){
         for(int x = 0; x < f->w; x++){
             int intensity = getBrightness(f->img[y * f->w + x], f->fmt);
-			/* if (y % 400 == 0 && x % 500 == 0) printf("intensity %d\n", intensity); */
-            if(intensity < threshold){
+            if((pick_dark && intensity < threshold) || (!pick_dark && intensity > threshold)){
+            //if((intensity - threshold) ^ pick_dark){
                 pix->array[pix->length].x = x;
                 pix->array[pix->length].y = y;
                 pix->array[pix->length].intensity = intensity;
@@ -72,13 +74,16 @@ void fill_array(pix_array *pix, frame *f, int threshold){
 //Returns the center of the array
 pixel center(pix_array pix, int w, int h){
     pixel center_pixel; 
-	if (pix.length == 0) {
-		center_pixel.x = 7;
-		center_pixel.y = 0;
-		center_pixel.intensity = 0;
-		center_pixel.dist = 0;
-		return center_pixel;
-	}
+
+    //sanity check
+    if (pix.length == 0) {
+        center_pixel.x = 7;
+        center_pixel.y = 0;
+        center_pixel.intensity = 0;
+        center_pixel.dist = 0;
+        return center_pixel;
+    }
+
     unsigned long sum_x = 0;
     unsigned long sum_y = 0;
     int sum_intensity = 0;
@@ -87,51 +92,54 @@ pixel center(pix_array pix, int w, int h){
         sum_y = sum_y + pix.array[i].y; 
         sum_intensity = sum_intensity + pix.array[i].intensity;
     }
+
     unsigned long center_x = sum_x/pix.length; 
     unsigned long center_y = sum_y/pix.length; 
     int center_intensity = sum_intensity/pix.length; 
+
     center_pixel.x = (unsigned short)center_x;
     center_pixel.y = (unsigned short)center_y;
     center_pixel.intensity = center_intensity; 
     center_pixel.dist = 0;
+
     return center_pixel;
 }
 
 //Remove pixels greater than the average distance from the center
 void trim_array(pix_array *p_array, pixel center, int dist) {
-	int centerX = center.x;
-	int centerY = center.y;
+    int centerX = center.x;
+    int centerY = center.y;
 
     if(p_array->length == 0){
         return;
     }
-	
-	//unsigned int sum = 0;
-	for(int i=0; i < p_array->length; i++) {
-		p_array->array[i].dist = 0.5 + sqrt(( p_array->array[i].x - centerX ) * ( p_array->array[i].x - centerX )
-									  + ( p_array->array[i].y - centerY ) * ( p_array->array[i].y - centerY ));
-		//sum += p_array->array[i].dist;
-	}
-	
-	//int average = sum / p_array->length;
-	int t = 0;
-	for(int i = 0; i < p_array->length; i++) {
-		if (p_array->array[i].dist <= dist) {
-			p_array->array[t++] = p_array->array[i];
-		}
-	}
-	p_array->length = t; 
+    
+    //unsigned int sum = 0;
+    for(int i=0; i < p_array->length; i++) {
+        p_array->array[i].dist = 0.5 + sqrt(( p_array->array[i].x - centerX ) * ( p_array->array[i].x - centerX )
+                                      + ( p_array->array[i].y - centerY ) * ( p_array->array[i].y - centerY ));
+        //sum += p_array->array[i].dist;
+    }
+    
+    //int average = sum / p_array->length;
+    int t = 0;
+    for(int i = 0; i < p_array->length; i++) {
+        if (p_array->array[i].dist <= dist) {
+            p_array->array[t++] = p_array->array[i];
+        }
+    }
+    p_array->length = t; 
 }
 
 
-void drawCrosshair(SDL_Surface *image, int w, int h, int px, int py) {
+void drawCrosshair(SDL_Surface *image, int w, int h, int px, int py, int mask) {
     int *p = (int *)image->pixels;
     for (int x = px - 5; x > 0 && x < w && x < px + 5; x++) {
-        p[py * w + x] = image->format->Gmask;
+        p[py * w + x] = mask;
     }
 
     for (int y = py - 5; y > 0 && y < h && y < py + 5; y++) {
-        p[y * w + px] = image->format->Gmask;
+        p[y * w + px] = mask;
     }
 }
 
@@ -155,7 +163,7 @@ void process_image(SDL_Surface *image, SDL_Surface *distribution, int w, int h) 
         }
     }
 
-    drawCrosshair(image, w, h, dx, dy);
+    drawCrosshair(image, w, h, dx, dy, image->format->Gmask);
 }
 
 int main () {
@@ -164,46 +172,84 @@ int main () {
     SDL_Surface *screen = SDL_SetVideoMode(WIDTH, HEIGHT, 32, SDL_SWSURFACE);
     SDL_Surface *buffer = SDL_CreateRGBSurface(SDL_SWSURFACE, WIDTH, HEIGHT - H_WIDTH, 32, 0, 0, 0, 0);
 
-	frame f = { 640, 480, screen->pixels, screen->format };
-	pix_array pix = { 0, malloc(WIDTH * HEIGHT * sizeof(pixel)) };
+    frame f = { 640, 480, screen->pixels, screen->format };
+    pix_array pix_dark = { 0, malloc(WIDTH * HEIGHT * sizeof(pixel)) };
+    pix_array pix_light = { 0, malloc(WIDTH * HEIGHT * sizeof(pixel)) };
 
     //Init frame grabbing
     startVideo("/dev/video0");
 
     //Grab frames and put them on the screen
     SDL_Event event;
-    pixel p = { 0 };
-    pixel c = { 0 };
+    pixel prev_dark = { 0 };
+    pixel curr_dark = { 0 };
+    pixel prev_light = { 0 };
+    pixel curr_light = { 0 };
+
+    int keypress = 0;
 
     do {
         read_frame(screen->pixels);
-		memcpy(f.img, screen->pixels, WIDTH * HEIGHT * sizeof(int));
+        memcpy(f.img, screen->pixels, WIDTH * HEIGHT * sizeof(int));
 
-		pix.length = 0;
-		fill_array(&pix, &f, 20);
+        //Find dark center
+        pix_dark.length = 0;
+        fill_array(&pix_dark, &f, 20, DARK);
 
-        printf("len: %d\n", pix.length);
+        printf("darklen: %d\n", pix_dark.length);
 
-        trim_array(&pix, p, 50);
+        trim_array(&pix_dark, prev_dark, 50);
 
-		c = center(pix, WIDTH, HEIGHT);
-        if(c.x != 0 && c.y != 0)
-            p = c;
+        curr_dark = center(pix_dark, WIDTH, HEIGHT);
+        if(curr_dark.x != 0 && curr_dark.y != 0)
+            prev_dark = curr_dark;
 
-		if (c.x != 0 && c.y != 0) {
-			printf("Drawing crosshair x %u y %u\n", c.x, c.y);
-			drawCrosshair(screen, WIDTH, HEIGHT, c.x, c.y);
-		}else{
-			printf("Drawing crosshair x %u y %u\n", p.x, p.y);
-			drawCrosshair(screen, WIDTH, HEIGHT, p.x, p.y);
+        if (curr_dark.x != 0 && curr_dark.y != 0) {
+            printf("Drawing dark crosshair x %u y %u\n", curr_dark.x, curr_dark.y);
+            drawCrosshair(screen, WIDTH, HEIGHT, curr_dark.x, curr_dark.y, screen->format->Gmask);
+        }else{
+            printf("Drawing dark crosshair x %u y %u\n", prev_dark.x, prev_dark.y);
+            drawCrosshair(screen, WIDTH, HEIGHT, prev_dark.x, prev_dark.y, screen->format->Gmask);
         }
-        /* process_image(screen, buffer, 640, 480); */
 
-        /* blit(0, 480 - H_WIDTH, buffer, screen); */
+        //Find light center
+        pix_light.length = 0;
+        fill_array(&pix_light, &f, 100, LIGHT);
+
+        //printf("lightlen: %d\n", pix_light.length);
+
+        trim_array(&pix_light, curr_dark, 50);
+
+        curr_light = center(pix_light, WIDTH, HEIGHT);
+        if(curr_light.x != 0 && curr_light.y != 0)
+            prev_light = curr_light;
+
+        if (curr_light.x != 0 && curr_light.y != 0) {
+            //printf("Drawing light crosshair x %u y %u\n", curr_light.x, curr_light.y);
+            drawCrosshair(screen, WIDTH, HEIGHT, curr_light.x, curr_light.y, screen->format->Bmask);
+        }else{
+            //printf("Drawing light crosshair x %u y %u\n", prev_light.x, prev_light.y);
+            drawCrosshair(screen, WIDTH, HEIGHT, prev_light.x, prev_light.y, screen->format->Bmask);
+        }
+
         SDL_Flip(screen);
-    } while (!SDL_PollEvent(&event) || event.type != SDL_QUIT && event.type != SDL_KEYDOWN);
+        while (SDL_PollEvent(&event)){
+            switch (event.type) { 
+                case SDL_QUIT:
+                case SDL_KEYDOWN :
+                    keypress = 1;
+                    break;
 
-	end:
+                case SDL_MOUSEBUTTONDOWN :
+                    printf("Changing center to %i, %i\n", event.button.x, event.button.y);
+                    prev_dark.x = event.button.x;
+                    prev_dark.y = event.button.y;
+                    break;
+            }
+        }
+    } while (!keypress);
+
+    end:
 
     //Stop grabbing frames
     stopVideo();
