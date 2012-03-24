@@ -1,18 +1,14 @@
 CC=gcc
-CFLAGS=-g -std=c99
-LDFLAGS=-lSDL -ldl -lm -lpthread
+CFLAGS=-g -std=gnu99
+LDFLAGS=-lSDL
 
-SOURCES=videoInterface.c videoTest.c
+SOURCES=videoInterface.c
 OBJECTS=$(SOURCES:.c=.o)
-EXECUTABLES=videoTest
 
 .PHONY: all clean
 
-all: $(EXECUTABLES)
-
-$(EXECUTABLES): $(OBJECTS)
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+all: $(OBJECTS)
 
 clean:
-	rm -rf $(EXECUTABLES) $(OBJECTS)
+	rm -rf *.o
 

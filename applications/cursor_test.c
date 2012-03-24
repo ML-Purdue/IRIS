@@ -2,12 +2,14 @@
  * Runs the mouse around in a circle, and then clicks
  * The click doesn't seem to register on some window types(?)
  * */
-#include "cursor.h"
-
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <stdio.h>
 #include <unistd.h>
+
+#include "cursor.h"
+
+#define PI 3.14159
 
 int
 main (int argc, char *argv[])
@@ -22,7 +24,7 @@ main (int argc, char *argv[])
     int time = 20000;
 
     for (int i = 0; i < iterations; i++) {
-        double theta = 2.0 * M_PI * i / iterations;
+        double theta = 2.0 * PI * i / iterations;
         x = r * cos(theta);
         y = r * sin(theta);
         x += xbase;

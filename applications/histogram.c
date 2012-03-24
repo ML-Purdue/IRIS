@@ -10,66 +10,8 @@
 
 #define HIST_W 100
 
-#define HI_THRESH 140
+#define HI_THRESH 180
 #define LOW_THRESH 50
-
-SDL_Surface * screen = NULL;
-SDL_Surface * image = NULL;
-
-int init();
-//int build_screen();
-int load_files();
-int poll_keypress();
-SDL_Surface * load_image(const char * filename);
-void apply_surface( int x, int y, SDL_Surface * src, SDL_Surface * dest);
-
-
-int
-load_files()
-{
-    image = load_image("cropc1dan.bmp");
-    if (image == NULL) {
-        return -1;
-    }
-    return 0;
-}
-
-int init () {
-    if (SDL_Init(SDL_INIT_VIDEO) < 0 )
-    {
-        return -1;
-    }
-
-    if (!(screen = SDL_SetVideoMode(WIDTH, HEIGHT, DEPTH, SDL_HWSURFACE)))
-    {
-        SDL_Quit();
-        return -1;
-    }
-    SDL_WM_SetCaption ("Histogram", NULL);
-
-    return 0;
-}
-
-
-SDL_Surface *load_image (const char * filename) {
-    //Temporary storage for the image that's loaded
-    SDL_Surface* loadedImage = NULL;
-    //The optimized image that will be used
-    SDL_Surface* optimizedImage = NULL;
-
-    loadedImage = SDL_LoadBMP(filename);
-
-    //If nothing went wrong in loading the image
-    if( loadedImage != NULL ) {
-        //Create an optimized image
-        optimizedImage = SDL_DisplayFormat( loadedImage );
-        //Free the old image
-        SDL_FreeSurface( loadedImage );
-    }
-
-    return optimizedImage;
-
-}
 
 // Note: y is actually ytimesw
 void setpixel(SDL_Surface *screen, int x, int y, Uint8 r, Uint8 g, Uint8 b)
@@ -109,18 +51,12 @@ int poll_keypress (){
 
 }
 
-void clean_up () {
-    SDL_FreeSurface(image);
-
-    SDL_Quit();
-}
 
 // Generates an array containing the normalized dark-density for each row
 // type 0 - upthresh, 1 - downthresh
 int *rowhist (SDL_Surface *src, int type) {
     int x, y, ytimesw;
-    int *rowsum = (int *) malloc(sizeof(int) * src->h);
-    int rowmax = -1;
+    int *rowsum = (int *) malloc(sizeof(int) * src->h); int rowmax = -1;
 
     Uint32 *pixmem32 = (Uint32*) src->pixels;
     Uint32 color;
@@ -249,7 +185,7 @@ int draw_hist (SDL_Surface *src, SDL_Surface *dest) {
     // Draw histogram for rows
     for (int y = 0; y < src->h; y++) {
         ytimesw = y * dest->pitch / BPP;
-        for (int x = 0; x < rowwhites[y]; x++) {
+        for (int x = 0; x < rowblacks[y]; x++) {
             setpixel(dest, x, ytimesw, 0, 255, 0);
         }
     }
@@ -257,14 +193,16 @@ int draw_hist (SDL_Surface *src, SDL_Surface *dest) {
     // Draw histogram for cols
     // TODO: optimize
     for (x = 0; x < src->w; x++) {
-        for (int i = colwhites[x]; i > 0; i--) {
+        for (int i = colblacks[x]; i > 0; i--) {
             y = HIST_W + src->h - i;
             ytimesw = y * dest->pitch / BPP;
             setpixel(dest, x + HIST_W, ytimesw, 0, 255, 0);
         }
     }
 
-    const int WINDOW = 10;
+	/*
+	// Whites
+	int WINDOW = 30;
     int * rowMaxes = localMaxes(rowwhites, src->h, 10);
     int * colMaxes = localMaxes(colwhites, src->w, 10);
     for (y = 0; y < src->h; y++) {
@@ -278,9 +216,12 @@ int draw_hist (SDL_Surface *src, SDL_Surface *dest) {
             }
         }
     }
+	*/
 
-    rowMaxes = localMaxes(rowblacks, src->h, 10);
-    colMaxes = localMaxes(colblacks, src->w, 10);
+	// Darks
+	int WINDOW = 80;
+    int * rowMaxes = localMaxes(rowblacks, src->h, 10);
+    int * colMaxes = localMaxes(colblacks, src->w, 10);
     for (y = 0; y < src->h; y++) {
         ytimesw = y * dest->pitch / BPP;
         for (x = 0; x < src->w; x++) {
@@ -301,56 +242,4 @@ int draw_hist (SDL_Surface *src, SDL_Surface *dest) {
 
 
 
-
-
-
-int
-main (int argc, char * argv[])
-{
-    SDL_Event event;
-
-    int keypress = 0;
-    int h=0;
-
-    if ( init() < 0 ) {
-        fprintf( stderr, "Could not init.\n");
-        return 1;
-    }
-
-
-    if ( load_files() < 0 ) {
-        fprintf( stderr, "Could not load files.\n");
-        fprintf( stderr, "%s\n", SDL_GetError() );
-        return 1;
-    }
-
-
-    apply_surface(HIST_W, 0, image, screen);
-
-    struct timeval start, end;
-    gettimeofday(&start, NULL);
-    draw_hist(image, screen);
-    gettimeofday(&end, NULL);
-
-    long seconds  = end.tv_sec  - start.tv_sec;
-    long useconds = end.tv_usec - start.tv_usec;
-
-    long mtime = ((seconds) * 1000 + useconds/1000.0) + 0.5;
-
-
-
-    printf("time: %li\n", mtime);
-
-    SDL_Flip(screen);
-
-    while (true) {
-
-        if (poll_keypress() == 1){
-            clean_up();
-            return 0;
-        }
-    }
-
-
-}
 

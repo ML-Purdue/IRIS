@@ -1,106 +1,157 @@
 #include <SDL/SDL.h>
-#include <SDL/SDL_ttf.h>
+//#include <SDL/SDL_ttf.h>
 #include <stdio.h>
 #include "cursor.h"
+#include <sys/time.h>
+#include <time.h>
+#include <sched.h>
 
 int x = 960;
 int y = 540;
 SDL_Event event;
+time_t last_mouse;
+
 void PrintKeyInfo(SDL_KeyboardEvent *key);
 void PrintModifiers(SDLMod mod);
-
+bool checkHold();
 int main( int argc, char *argv[] ){
-	int x,y;
-	int quit = 0;
-	init_cursor();
-	if( SDL_Init( SDL_INIT_VIDEO ) < 0){
-		fprintf( stderr, "Could not initialise SDL: %s\n", SDL_GetError() );
-		exit( -1 );
-	}
+    int x,y;
+    int quit = 0;
+    init_cursor();
+    if( SDL_Init( SDL_INIT_VIDEO ) < 0){
 
-	if( !SDL_SetVideoMode( 320, 200, 0, 0 ) ){
-		fprintf( stderr, "Could not set video mode: %s\n", SDL_GetError() );
-		SDL_Quit();
-		exit( -1 );
-	}
+        exit( -1 );
+    }
 
-	SDL_EnableUNICODE( 1 );
-	set_cursor(x, y);
-	while( !quit ){
-		while( SDL_PollEvent( &event ) ){
-			switch( event.type ){
-				case SDL_KEYDOWN:
-					PrintKeyInfo( &event.key );
-					break;
-				case SDL_QUIT:
-					quit = 1;
-					break;
-				default:
-					break;
-			}
+    if( !SDL_SetVideoMode( 320, 200, 0, 0 ) ){
+        SDL_Quit();
+        exit( -1 );
+    }
 
-		}
+    SDL_EnableUNICODE( 1 );
+    set_cursor(x, y);
+    if(checkHold()) {
+        printf("More than 3 seconds.");
+    }
+    while( !quit ){
+        while( SDL_PollEvent( &event ) ){
+            switch( event.type ){
+                case SDL_KEYDOWN:
+                    PrintKeyInfo( &event.key );
+                    break;
+                case SDL_QUIT:
+                    quit = 1;
+                    break;
+                default:
+                    checkHold();
+                    break;
+            }
+        }
 
-	}
-	SDL_Quit();
-	exit( 0 );
+    }
+    SDL_Quit();
+    exit( 0 );
 }
 
+bool checkHold(){
+    int x0, y0, x1, y1;
+    time_t start;
+    time_t end;
+    static bool firstCall = true;
+
+    if (firstCall) {
+
+        firstCall = false;
+        time(&start);
+        get_cursor(&x0, &y0);
+        return false;
+    }  
+
+    sched_yield();
+
+    get_cursor(&x1, &y1);
+
+    if ( (abs(x0-x1)+abs(y0-y1)) > 3 ) {
+        puts("aaa");
+        x0 = x1;
+        y0 = y1;
+        time(&start);
+        return false;
+    }
+
+    time(&end);
+    printf("%lf\n", difftime(end, start) );
+
+
+    if ( difftime(end, start) > 3 ) {
+        time(&start);
+        get_cursor(&x0, &y0);
+        return true;
+    }
+
+    return false;
+}
+
+void drawcircle(int x, int y){
+}
+
+
 void PrintKeyInfo( SDL_KeyboardEvent *key ){
-	/* Is it a release or a press? */
-	printf("The previous y cordinates is %d\n",y);
-	if( key->type == SDL_KEYUP ){
-		printf( "Release:- " );
-	}
-	else{
-		if (key->keysym.sym == SDLK_UP) {
-			printf( "Success Right!\n");
-			y -= 1;
-			if(y == 0) exit(0);
-			if(y == 980) exit(0);
-			printf("The after y coordinate is %d\n",y);
-			key = &event.key;
-			set_cursor(x,y);
-		}
-		if(key->keysym.sym == SDLK_DOWN){
-			printf("success down\n");
-			y += 1;
-			if(y == 0) exit(0);
-			if(y == 980) exit(0);
-			printf("The after y coordinates is %i\n",y);
-			key = &event.key;
-			set_cursor(x,y);
-		}
-		if(key->keysym.sym == SDLK_RIGHT){
-			printf("success right\n");
-			x+=1;
-			if(x == 0) exit(0);
-			if(x == 1080) exit(0);
-			printf("The after x coordinates is %i\n",x);
-			key =&event.key;
-			set_cursor(x,y);
-		}
-		if(key->keysym.sym == SDLK_LEFT){
-			printf("success left\n");
-			x-=1;
-			if(x == 0) exit(0);
-			if(x == 1080) exit(0);
-			printf("The after x coordinates is %i\n",x);
-			key = &event.key;
-			set_cursor(x,y);
-		}
-	}
-	PrintModifiers( key->keysym.mod );
+
+    if( key->type == SDL_KEYUP ){
+        printf( "Release:- " );
+    }
+    else{
+        if (key->keysym.sym == SDLK_UP) {
+            y -= 10;
+            if(y == 0) exit(0);
+            if(y == 980) exit(0);
+            key = &event.key;
+            set_cursor(x,y);
+            time(&last_mouse);
+        }
+
+        if(key->keysym.sym == SDLK_DOWN){
+            y += 10;
+            if(y == 0) exit(0);
+            if(y == 980) exit(0);
+            key = &event.key;
+            set_cursor(x,y);
+            time(&last_mouse);
+        }
+
+        if(key->keysym.sym == SDLK_RIGHT){
+            x+=10;
+            if(x == 0) exit(0);
+            if(x == 1080) exit(0);
+            key =&event.key;
+            set_cursor(x,y);
+            time(&last_mouse);
+        }
+
+        if(key->keysym.sym == SDLK_LEFT){
+            x-=10;
+            if(x == 0) exit(0);
+            if(x == 1080) exit(0);
+            key = &event.key;
+            set_cursor(x,y);
+            time(&last_mouse);
+        }
+
+        time_t current_time;
+        time(&current_time);
+        if (current_time - last_mouse > 3 seconds) {
+            printf("More than 3 seconds.");
+            
+    }
+    PrintModifiers( key->keysym.mod );
 }
 
 /* Print modifier info */
 void PrintModifiers( SDLMod mod ){
-	printf( "Modifers: " );
-
-	/* If there are none then say so and return */
-	if( mod == KMOD_NONE ){
-		printf( "None\n" );
-		return;
-	}
-	printf( "\n" );
+    printf( "Modifers: " );
+    if( mod == KMOD_NONE ){
+        return;
+    }
+    printf( "\n" );
 }
