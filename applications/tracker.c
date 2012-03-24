@@ -144,6 +144,7 @@ int avgDist (pix_array *p_array, pixel center) {
     return (int)dist;
 }
 
+// Perhaps a better estimate would be area of circle - # of pix in p_arr that are within circle
 int circle_err (pix_array *p_array, pixel center, int radius) {
     int * distances;
     int i, dist, error;

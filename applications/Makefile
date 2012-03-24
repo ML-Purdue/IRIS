@@ -2,7 +2,7 @@ CC = gcc -g
 CFLAGS=-std=gnu99 -g
 LDFLAGS=-lSDL -ldl -lm -lpthread
 
-all:test cursor.o circle histclient tracker Keylistener
+all:test cursor.o circle histclient tracker #Keylistener
 
 test: SDL_test.c
 	$(CC) -lSDL -lSDL_ttf -o SDL_test SDL_test.c $(CFLAGS)
