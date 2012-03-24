@@ -73,7 +73,7 @@ void fill_array(pix_array *pix, frame *f, int threshold, int pick_dark){
 
 //Returns the center of the array
 pixel center(pix_array pix, int w, int h){
-    pixel center_pixel; 
+    pixel center_pixel;
 
     //sanity check
     if (pix.length == 0) {
@@ -89,17 +89,17 @@ pixel center(pix_array pix, int w, int h){
     int sum_intensity = 0;
     for(int i = 0; i < pix.length;  i++){
         sum_x = sum_x + pix.array[i].x;
-        sum_y = sum_y + pix.array[i].y; 
+        sum_y = sum_y + pix.array[i].y;
         sum_intensity = sum_intensity + pix.array[i].intensity;
     }
 
-    unsigned long center_x = sum_x/pix.length; 
-    unsigned long center_y = sum_y/pix.length; 
-    int center_intensity = sum_intensity/pix.length; 
+    unsigned long center_x = sum_x/pix.length;
+    unsigned long center_y = sum_y/pix.length;
+    int center_intensity = sum_intensity/pix.length;
 
     center_pixel.x = (unsigned short)center_x;
     center_pixel.y = (unsigned short)center_y;
-    center_pixel.intensity = center_intensity; 
+    center_pixel.intensity = center_intensity;
     center_pixel.dist = 0;
 
     return center_pixel;
@@ -113,14 +113,14 @@ void trim_array(pix_array *p_array, pixel center, int dist) {
     if(p_array->length == 0){
         return;
     }
-    
+
     //unsigned int sum = 0;
     for(int i=0; i < p_array->length; i++) {
         p_array->array[i].dist = 0.5 + sqrt(( p_array->array[i].x - centerX ) * ( p_array->array[i].x - centerX )
                                       + ( p_array->array[i].y - centerY ) * ( p_array->array[i].y - centerY ));
         //sum += p_array->array[i].dist;
     }
-    
+
     //int average = sum / p_array->length;
     int t = 0;
     for(int i = 0; i < p_array->length; i++) {
@@ -128,8 +128,101 @@ void trim_array(pix_array *p_array, pixel center, int dist) {
             p_array->array[t++] = p_array->array[i];
         }
     }
-    p_array->length = t; 
+    p_array->length = t;
 }
+
+int avgDist (pix_array *p_array, pixel center) {
+    long dist = 0;
+    int i;
+
+    for (i = 0; i < p_array->length; i++) {
+        dist += sqrt(( p_array->array[i].x - center.x ) * ( p_array->array[i].x - center.x )
+                   + ( p_array->array[i].y - center.y ) * ( p_array->array[i].y - center.y ));
+    }
+
+    dist /= p_array->length;
+    return (int)dist;
+}
+
+int circle_err (pix_array *p_array, pixel center, int radius) {
+    int * distances;
+    int i, dist, error;
+
+    distances = (int *) malloc(radius * sizeof(int));
+
+    for (i = 0; i < p_array->length; i++) {
+        dist = sqrt(( p_array->array[i].x - center.x ) * ( p_array->array[i].x - center.x )
+                  + ( p_array->array[i].y - center.y ) * ( p_array->array[i].y - center.y ));
+        if (dist < radius) {
+            distances[dist]++;
+        }
+    }
+
+    error = 0;
+    for (i = 1; i < radius; i++) {
+        int s = distances[i-1] * distances[i-1] - distances[i];
+        error += (s > 0) ? s : -s;
+    }
+
+    free(distances);
+    return error;
+}
+
+
+
+void set_pixel(SDL_Surface *surface, int x, int y, Uint32 pixel) {
+
+   Uint8 *target_pixel = (Uint8 *)surface->pixels + y * surface->pitch + x * 4;
+   *(Uint32 *)target_pixel = pixel;
+
+}
+
+// Super quick circle, uses no trig!
+// n_cx and n_cy are coords of the center
+void draw_circle(SDL_Surface *surface, int n_cx, int n_cy, int radius, Uint32 pixel) {
+
+	double error = (double)-radius;
+	double x = (double)radius -0.5;
+	double y = (double)0.5;
+	double cx = n_cx - 0.5;
+	double cy = n_cy - 0.5;
+
+	while (x >= y)
+	{
+	   set_pixel(surface, (int)(cx + x), (int)(cy + y), pixel);
+	   set_pixel(surface, (int)(cx + y), (int)(cy + x), pixel);
+
+	   if (x != 0)
+	   {
+		   set_pixel(surface, (int)(cx - x), (int)(cy + y), pixel);
+		   set_pixel(surface, (int)(cx + y), (int)(cy - x), pixel);
+	   }
+
+	   if (y != 0)
+	   {
+		   set_pixel(surface, (int)(cx + x), (int)(cy - y), pixel);
+		   set_pixel(surface, (int)(cx - y), (int)(cy + x), pixel);
+	   }
+
+	   if (x != 0 && y != 0)
+	   {
+		   set_pixel(surface, (int)(cx - x), (int)(cy - y), pixel);
+		   set_pixel(surface, (int)(cx - y), (int)(cy - x), pixel);
+	   }
+
+	   error += y;
+	   ++y;
+	   error += y;
+
+	   if (error >= 0)
+	   {
+		   --x;
+		   error -= x;
+		   error -= x;
+	   }
+	}
+}
+
 
 
 void drawCrosshair(SDL_Surface *image, int w, int h, int px, int py, int mask) {
@@ -207,6 +300,12 @@ int main () {
         if (curr_dark.x != 0 && curr_dark.y != 0) {
             printf("Drawing dark crosshair x %u y %u\n", curr_dark.x, curr_dark.y);
             drawCrosshair(screen, WIDTH, HEIGHT, curr_dark.x, curr_dark.y, screen->format->Gmask);
+
+            // Circle the blob of darkness
+            int radius = 2 * avgDist(&pix_dark, curr_dark);
+            printf("Radius of darkenss is %i with circle_error %i\n", radius, circle_err(&pix_dark, curr_dark, radius));
+            draw_circle(screen, curr_dark.x, curr_dark.y, radius, screen->format->Rmask);
+
         }else{
             printf("Drawing dark crosshair x %u y %u\n", prev_dark.x, prev_dark.y);
             drawCrosshair(screen, WIDTH, HEIGHT, prev_dark.x, prev_dark.y, screen->format->Gmask);
@@ -234,7 +333,7 @@ int main () {
 
         SDL_Flip(screen);
         while (SDL_PollEvent(&event)){
-            switch (event.type) { 
+            switch (event.type) {
                 case SDL_QUIT:
                 case SDL_KEYDOWN :
                     keypress = 1;
