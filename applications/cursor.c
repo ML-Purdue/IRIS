@@ -21,6 +21,13 @@ set_cursor (int x, int y)
     XFlush(dpy);
 }
 
+void
+get_cursor (int* x, int* y) {
+  Window w;
+  int i;
+  XQueryPointer(dpy, root_window, &w, &w, x, y, &i, &i, (unsigned int *)&i);
+}
+
 void click_mouse (int button)
 {
     XEvent event;

@@ -9,6 +9,7 @@ static Display *dpy;
 static Window root_window;
 
 int init_cursor();
+void get_cursor(int* x, int* y);
 void set_cursor(int x, int y);
 void click_mouse (int button);
 
