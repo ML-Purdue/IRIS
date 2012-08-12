@@ -53,7 +53,7 @@ void fill_array(pix_array *pix, frame *f, int threshold, int pick_dark);
 pixel center(pix_array pix, int w, int h);
 
 //Remove pixels greater than the average distance from the center
-void trim_array(pix_array *pix, pixel center, int dist);
+void trim_array(pix_array *from, pix_array *to, pixel center, int dist);
 
 void fill_array(pix_array *pix, frame *f, int threshold, int pick_dark){
     for(int y = 0; y < f->h; y++){
@@ -105,30 +105,25 @@ pixel center(pix_array pix, int w, int h){
     return center_pixel;
 }
 
-//Remove pixels greater than the average distance from the center
-void trim_array(pix_array *p_array, pixel center, int dist) {
+//Copy all the pixels in 'from-arr' less than the 'dist' away from 'center' into 'to_arr'.
+//The copying into a new buffer is to improve performance
+void trim_array(pix_array *from_arr, pix_array *to_arr, pixel center, int dist) {
     int centerX = center.x;
     int centerY = center.y;
 
-    if(p_array->length == 0){
+    if(from_arr->length == 0){
         return;
     }
 
-    //unsigned int sum = 0;
-    for(int i=0; i < p_array->length; i++) {
-        p_array->array[i].dist = 0.5 + sqrt(( p_array->array[i].x - centerX ) * ( p_array->array[i].x - centerX )
-                                      + ( p_array->array[i].y - centerY ) * ( p_array->array[i].y - centerY ));
-        //sum += p_array->array[i].dist;
-    }
-
-    //int average = sum / p_array->length;
     int t = 0;
-    for(int i = 0; i < p_array->length; i++) {
-        if (p_array->array[i].dist <= dist) {
-            p_array->array[t++] = p_array->array[i];
+    for(int i=0; i < from_arr->length; i++) {
+        from_arr->array[i].dist = 0.5 + sqrt(( from_arr->array[i].x - centerX ) * ( from_arr->array[i].x - centerX )
+                                      + ( from_arr->array[i].y - centerY ) * ( from_arr->array[i].y - centerY ));
+        if(from_arr->array[i].dist <= dist){
+            to_arr->array[t++] = from_arr->array[i];
         }
     }
-    p_array->length = t;
+    to_arr->length = t;
 }
 
 int avgDist (pix_array *p_array, pixel center) {
@@ -267,8 +262,8 @@ int main () {
     SDL_Surface *buffer = SDL_CreateRGBSurface(SDL_SWSURFACE, WIDTH, HEIGHT - H_WIDTH, 32, 0, 0, 0, 0);
 
     frame f = { 640, 480, screen->pixels, screen->format };
-    pix_array pix_dark = { 0, malloc(WIDTH * HEIGHT * sizeof(pixel)) };
-    pix_array pix_light = { 0, malloc(WIDTH * HEIGHT * sizeof(pixel)) };
+    pix_array back_buffer = { 0, malloc(WIDTH * HEIGHT * sizeof(pixel)) };
+    pix_array front_buffer = { 0, malloc(WIDTH * HEIGHT * sizeof(pixel)) };
 
     //Init frame grabbing
     startVideo("/dev/video0");
@@ -277,8 +272,6 @@ int main () {
     SDL_Event event;
     pixel prev_dark = { 0 };
     pixel curr_dark = { 0 };
-    pixel prev_light = { 0 };
-    pixel curr_light = { 0 };
 
     int keypress = 0;
 
@@ -287,14 +280,14 @@ int main () {
         memcpy(f.img, screen->pixels, WIDTH * HEIGHT * sizeof(int));
 
         //Find dark center
-        pix_dark.length = 0;
-        fill_array(&pix_dark, &f, 20, DARK);
+        back_buffer.length = 0;
+        fill_array(&back_buffer, &f, 20, DARK);
 
-        printf("darklen: %d\n", pix_dark.length);
+        printf("darklen: %d\n", back_buffer.length);
 
-        trim_array(&pix_dark, prev_dark, 50);
+        trim_array(&back_buffer, &front_buffer, prev_dark, 50);
 
-        curr_dark = center(pix_dark, WIDTH, HEIGHT);
+        curr_dark = center(front_buffer, WIDTH, HEIGHT);
         if(curr_dark.x != 0 && curr_dark.y != 0)
             prev_dark = curr_dark;
 
@@ -303,8 +296,8 @@ int main () {
             drawCrosshair(screen, WIDTH, HEIGHT, curr_dark.x, curr_dark.y, screen->format->Gmask);
 
             // Circle the blob of darkness
-            int radius = 2 * avgDist(&pix_dark, curr_dark);
-            printf("Radius of darkenss is %i with circle_error %i\n", radius, circle_err(&pix_dark, curr_dark, radius));
+            int radius = 2 * avgDist(&front_buffer, curr_dark);
+            printf("Radius of darkenss is %i with circle_error %i\n", radius, circle_err(&front_buffer, curr_dark, radius));
             draw_circle(screen, curr_dark.x, curr_dark.y, radius, screen->format->Rmask);
 
         }else{
@@ -312,27 +305,8 @@ int main () {
             drawCrosshair(screen, WIDTH, HEIGHT, prev_dark.x, prev_dark.y, screen->format->Gmask);
         }
 
-        //Find light center
-        pix_light.length = 0;
-        fill_array(&pix_light, &f, 100, LIGHT);
-
-        //printf("lightlen: %d\n", pix_light.length);
-
-        trim_array(&pix_light, curr_dark, 50);
-
-        curr_light = center(pix_light, WIDTH, HEIGHT);
-        if(curr_light.x != 0 && curr_light.y != 0)
-            prev_light = curr_light;
-
-        if (curr_light.x != 0 && curr_light.y != 0) {
-            //printf("Drawing light crosshair x %u y %u\n", curr_light.x, curr_light.y);
-            drawCrosshair(screen, WIDTH, HEIGHT, curr_light.x, curr_light.y, screen->format->Bmask);
-        }else{
-            //printf("Drawing light crosshair x %u y %u\n", prev_light.x, prev_light.y);
-            drawCrosshair(screen, WIDTH, HEIGHT, prev_light.x, prev_light.y, screen->format->Bmask);
-        }
-
         SDL_Flip(screen);
+
         while (SDL_PollEvent(&event)){
             switch (event.type) {
                 case SDL_QUIT:
@@ -348,8 +322,6 @@ int main () {
             }
         }
     } while (!keypress);
-
-    end:
 
     //Stop grabbing frames
     stopVideo();
